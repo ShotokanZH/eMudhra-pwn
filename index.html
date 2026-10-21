@@ -1073,7 +1073,7 @@
   }
 
   function basicConstraintsExt(isCA) {
-    return extension(OID.basicConstraints, true, seq(bool(isCA)));
+    return extension(OID.basicConstraints, true, isCA ? seq(bool(true)) : seq());
   }
 
   function keyUsageExt(isRsa) {
