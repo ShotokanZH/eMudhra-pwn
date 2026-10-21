@@ -1,16 +1,16 @@
 # eMudhraPwn
 
-**Offline X.509 certificate generator built on the compromised eMudhra intermediate CA.**
+**Offline X.509 certificate generator built on the revoked eMudhra intermediate CAs.**
 
 `eMudhraPwn` is a single-file, fully client-side web tool that issues X.509 v3 TLS
-certificates signed by an embedded eMudhra intermediate CA. It exists as a practical
-demonstration of the October 2026 eMudhra certificate compromise.
+certificates signed by any of the affected eMudhra intermediate CAs. It exists as a
+practical demonstration of the October 2026 eMudhra certificate compromise.
 
-> **Authorized testing only.** The embedded CA is compromised and the private key is
-> trivially weak (EC P-384 scalar `d = 4`). Updated browser and OS trust stores
-> distrust this CA. Do not use generated certificates for production, public-facing
-> services, impersonation, or any system you do not own or have explicit permission
-> to test.
+> **Authorized testing only.** The embedded CAs are compromised and revoked
+> (`caCompromise`), and their private keys are weak small integers (for example,
+> `d = 4` and `d = 156`). Updated browser and OS trust stores distrust these CAs.
+> Do not use generated certificates for production, public-facing services,
+> impersonation, or any system you do not own or have explicit permission to test.
 
 ---
 
@@ -25,13 +25,14 @@ demonstration of the October 2026 eMudhra certificate compromise.
 
 On 19 October 2026, Cloudflare became aware that the private keys for eight eMudhra
 intermediate certificates were compromised. The keys were weak enough that an attacker
-could create forged certificates for arbitrary domains. eMudhraPwn packages one of
-those compromised intermediate CAs, `EM OV TLS CA - G3C` (issued by
-`emSign Root TLS CA - G3`), together with its private key into a local certificate
-generator.
+could create forged certificates for arbitrary domains. eMudhraPwn packages all 16
+affected intermediate certificates (8 CA keys with cross-signed variants), together
+with their private keys, into a local certificate generator.
 
 The tool does not exploit a new vulnerability. It demonstrates the practical impact of
-the known key compromise: anyone with this page can sign certificates for any domain.
+the known key compromise: anyone with this page can sign certificates with any of the
+embedded CAs. All affected intermediates were revoked with reason `caCompromise`;
+certificates issued by them should be rejected by updated revocation-checking clients.
 
 Further reading:
 
@@ -44,10 +45,11 @@ Further reading:
 
 - **Single static file** — `index.html`, no build step, no CDN, no external JavaScript
   libraries, no network access during page load or certificate generation.
-- **Offline by design** — the page enforces CSP `connect-src 'none'`; the CA private key
-  never leaves the browser.
-- **Embedded, read-only CA** — the certificate and private key are hardcoded and shown
-  in the UI in read-only mode. The CA cannot be changed from the interface.
+- **Offline by design** — the page enforces CSP `connect-src 'none'`; the CA private
+  keys never leave the browser.
+- **Embedded CA profiles** — all 16 affected certificates (8 keys with cross-signed
+  variants) are embedded. A profile selector switches the active CA; the selected
+  certificate and private key are shown read-only and cannot be edited in the UI.
 - **SAN input** — multiple DNS names and IP addresses:
   - wildcard DNS names such as `*.example.com`
   - IPv4 and IPv6 addresses
@@ -89,13 +91,16 @@ Further reading:
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | The complete standalone application. |
-| `cert.pem` | CA certificate; reference copy of the CA embedded in `index.html`. |
-| `private.pem` | CA private key; reference copy of the compromised key embedded in `index.html`. |
+| `index.html` | The complete standalone application, including the 16 CA profiles. |
+| `cert.pem` | Default CA certificate reference (`EM OV TLS CA - G3C`, emSign chain). |
+| `private.pem` | Default CA private key reference (same profile). |
 | `README.md` | This document. |
 
-`cert.pem` and `private.pem` are reference copies of the CA material hardcoded in
-`index.html`; the page does not fetch them at runtime.
+`cert.pem` and `private.pem` are the reference for the default profile only. The 16
+profiles are embedded in `index.html` and are based on the public Knight1/emudhra key
+set. The page does not fetch these files at runtime. When you generate with a
+non-default profile, the ZIP contains that profile's CA as `cert.pem`; the repository
+`cert.pem` remains the default reference.
 
 ---
 
@@ -109,8 +114,8 @@ Further reading:
      python3 -m http.server 8000
      ```
      then open <http://localhost:8000/>. This is still fully local.
-2. The CA section is fixed and read-only. Expand **Embedded CA** to inspect the
-   certificate and private key.
+2. Choose a CA from the **CA profile** selector. The selected material is read-only;
+   expand **Embedded CA** to inspect the certificate and private key.
 3. Enter one or more domains or IP addresses in **Domains and IP addresses**.
    Examples:
    ```
@@ -230,8 +235,8 @@ compromised CA or verification is explicitly disabled for an isolated lab.
 
 ## Limitations
 
-- The CA is fixed in the HTML. To use a different CA, edit `DEFAULT_CA_CERT` and
-  `DEFAULT_CA_KEY` in `index.html`.
+- The embedded CA list is fixed. To add a custom CA, edit `CA_PROFILES` in
+  `index.html`.
 - Only unencrypted PEM private keys are supported.
 - Only end-entity certificates are generated; there is no sub-CA issuance.
 - Supported CA key types: EC P-256/P-384/P-521 and RSA (PKCS#8, SEC1, PKCS#1).
@@ -239,24 +244,24 @@ compromised CA or verification is explicitly disabled for an isolated lab.
 - No CRL, OCSP or AIA extensions are added.
 - The tool requires WebCrypto. Very old browsers and some restrictive `file://`
   configurations will not work; use a local HTTP server in that case.
-- The generated certificates chain to a compromised CA and are not trusted by updated
+- The generated certificates chain to revoked CAs and are not trusted by updated
   trust stores. They are not suitable for production or public use.
 
 ---
 
 ## Security and responsible use
 
-- The CA private key is embedded in the HTML and available in the read-only
+- The CA private keys are embedded in the HTML and available in the read-only
   **Embedded CA** section. This is inherent to the demonstration; anyone with the file
-  has the key.
-- The certificate is only trusted where the embedded CA (or its root chain) is trusted
-  and not revoked. Installing that CA into a production trust store would undo the
+  has the keys. All affected CAs were revoked with reason `caCompromise`.
+- A certificate is only trusted where its embedded CA (or root chain) is trusted and
+  not revoked. Installing these CAs into a production trust store would undo the
   protection that the eMudhra incident response is trying to restore.
 - Use the tool only in isolated labs, CTFs, or environments where you have explicit
   written authorization.
 - The page does not make network requests while generating certificates. The GitHub,
   Cloudflare and Ko-fi links are external navigations and open only when clicked.
-- No generated private key or CA key is transmitted or stored by the page.
+- No generated private key or CA key material is transmitted or stored by the page.
 
 ---
 
@@ -270,6 +275,8 @@ compromised CA or verification is explicitly disabled for an isolated lab.
 - **eMudhra** — the compromised intermediate CA and certificate data.
 - **Fluepke** — reference gist for the compromised CA certificate and key material:
   [Reference gist](https://gist.github.com/Fluepke/9a103c7f990c3cc2fb5002f7476f2f48).
+- **Knight1** — multi-CA Go PoC and key set used for the embedded profiles:
+  [Knight1/emudhra](https://github.com/Knight1/emudhra).
 - Built with browser WebCrypto and a hand-written ASN.1 DER encoder/parser. No
   third-party JavaScript libraries are used.
 
