@@ -1,0 +1,2449 @@
+<!doctype html>
+<html lang="en" prefix="og: https://ogp.me/ns#">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304070a'/%3E%3Cpath d='M9 16l5 5 9-11' stroke='%233dffa2' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>eMudhraPwn by ShotokanZH</title>
+<meta name="description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certs with SAN, wildcards and IPv4/IPv6 locally.">
+<meta name="author" content="ShotokanZH">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#04070a">
+<meta name="application-name" content="eMudhraPwn">
+<meta name="keywords" content="eMudhra, eMudhraPwn, X.509, certificate generator, TLS, PKI, OpenSSL, wildcard certificate, SAN, offline, security research">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="eMudhraPwn">
+<meta property="og:title" content="eMudhraPwn by ShotokanZH">
+<meta property="og:description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certificates with SAN, wildcards and IPv4/IPv6 locally.">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="eMudhraPwn by ShotokanZH">
+<meta name="twitter:description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. SAN, wildcards, IPv4/IPv6 — all local.">
+<!-- For rich social previews, add absolute og:url, og:image and twitter:image, plus a canonical link, once the page has a public URL. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "eMudhraPwn",
+  "alternateName": "eMudhraPwn by ShotokanZH",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Any",
+  "softwareVersion": "1.0.0",
+  "isAccessibleForFree": true,
+  "inLanguage": "en",
+  "description": "Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certificates with SAN, wildcards and IPv4/IPv6 locally.",
+  "author": { "@type": "Person", "name": "ShotokanZH" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<style>
+  :root {
+    --bg: #04070a;
+    --text: #e9f7f1;
+    --muted: #8ba89f;
+    --dim: #5d746d;
+    --line: rgba(160, 255, 210, 0.12);
+    --line-strong: rgba(160, 255, 210, 0.24);
+    --accent: #3dffa2;
+    --accent-2: #41d9ff;
+    --accent-ink: #03140b;
+    --accent-dim: rgba(61, 255, 162, 0.10);
+    --glow: rgba(61, 255, 162, 0.30);
+    --danger: #ff5f7e;
+    --warn: #ffcf66;
+    --ok: #3dffa2;
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --radius: 18px;
+  }
+  body[data-mode="glass"] {
+    --line: rgba(190, 180, 255, 0.14);
+    --line-strong: rgba(190, 180, 255, 0.26);
+    --accent: #a78bfa;
+    --accent-2: #38bdf8;
+    --accent-ink: #0b0618;
+    --accent-dim: rgba(167, 139, 250, 0.10);
+    --glow: rgba(167, 139, 250, 0.30);
+    --ok: #8ef0c8;
+  }
+  * { box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    font: 14px/1.55 var(--sans);
+    background:
+      radial-gradient(1200px 800px at 12% -10%, #0b2a20 0%, transparent 60%),
+      radial-gradient(1000px 700px at 108% 8%, #062a33 0%, transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, #1a1233 0%, transparent 60%),
+      var(--bg);
+    overflow-x: hidden;
+  }
+  [hidden] { display: none !important; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  button, input, select, textarea { font: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  #matrix {
+    position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%;
+    opacity: 0.30; pointer-events: none;
+  }
+  .aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.34; }
+  .b1 { width: 520px; height: 520px; background: #0c6b4a; left: -140px; top: -140px; animation: drift 22s ease-in-out infinite alternate; }
+  .b2 { width: 500px; height: 500px; background: #0b4e66; right: -120px; top: 8%; animation: drift 27s ease-in-out infinite alternate-reverse; }
+  .b3 { width: 460px; height: 460px; background: #2b1c5e; left: 28%; bottom: -180px; animation: drift 31s ease-in-out infinite alternate; }
+  .scanlines {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.028) 0 1px, transparent 1px 3px);
+    opacity: 0.30; mix-blend-mode: overlay;
+  }
+  body[data-mode="glass"] #matrix,
+  body[data-mode="glass"] .scanlines { display: none; }
+
+  @keyframes drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(60px, 40px, 0) scale(1.12); }
+  }
+  @keyframes blink { 0%, 45% { opacity: 1; } 50%, 95% { opacity: 0.15; } 100% { opacity: 1; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+  .shell { position: relative; z-index: 2; max-width: 1440px; margin: 0 auto; padding: 22px 22px 40px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 6px 4px 20px; border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+  .logo {
+    width: 46px; height: 46px; flex: none; display: grid; place-items: center;
+    border: 1px solid var(--line-strong); border-radius: 12px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.01));
+    color: var(--accent); font: 700 15px var(--mono);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 0 26px var(--accent-dim);
+  }
+  h1 {
+    margin: 0; font: 700 20px/1.1 var(--mono); letter-spacing: 0.10em;
+    text-shadow: 0 0 24px var(--glow);
+  }
+  h1 span { color: var(--accent); }
+  h1 small {
+    margin-left: 7px; color: var(--muted); font: 400 10px var(--mono);
+    letter-spacing: 0.08em; text-shadow: none; white-space: nowrap;
+  }
+  .brand p { margin: 5px 0 0; color: var(--muted); font: 11px var(--mono); letter-spacing: 0.04em; }
+  .brand p::after { content: "▌"; color: var(--accent); margin-left: 3px; animation: blink 1.4s steps(1) infinite; }
+
+  .top-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+  .net-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: 6px 12px; color: var(--accent); background: var(--accent-dim);
+    font: 700 10px var(--mono); letter-spacing: 0.14em;
+  }
+  .net-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: blink 2s infinite; }
+  .mode-switch { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font: 700 10px var(--mono); letter-spacing: 0.12em; user-select: none; cursor: pointer; }
+  .mode-switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .track { width: 38px; height: 20px; border-radius: 999px; border: 1px solid var(--line-strong); background: rgba(0,0,0,0.4); position: relative; transition: background .2s, border-color .2s; }
+  .knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s, box-shadow .2s; }
+  .mode-switch input:checked + .track { background: var(--accent-dim); border-color: var(--accent); }
+  .mode-switch input:checked + .track .knob { transform: translateX(18px); background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+  .mode-switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .intel {
+    display: flex; gap: 12px; align-items: flex-start;
+    margin-top: 18px; padding: 11px 14px;
+    border: 1px solid rgba(255, 207, 102, 0.26); border-left: 3px solid var(--warn);
+    border-radius: 12px;
+    background: linear-gradient(90deg, rgba(255, 207, 102, 0.06), rgba(0, 0, 0, 0.12));
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    color: var(--muted); font-size: 11.5px; line-height: 1.6;
+  }
+  .intel-tag {
+    flex: none; margin-top: 1px; color: var(--warn);
+    font: 700 9px var(--mono); letter-spacing: 0.12em;
+  }
+  .intel p { margin: 0; }
+  .intel a { color: var(--warn); text-decoration: underline; text-underline-offset: 2px; }
+  .intel a:hover { color: var(--accent); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 455px) minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 20px; }
+
+  .panel {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(155deg, rgba(20, 34, 37, 0.72), rgba(7, 13, 16, 0.58));
+    backdrop-filter: blur(22px) saturate(1.15);
+    -webkit-backdrop-filter: blur(22px) saturate(1.15);
+    box-shadow: 0 24px 70px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  body[data-mode="glass"] .panel {
+    background: linear-gradient(155deg, rgba(27, 22, 46, 0.68), rgba(9, 9, 20, 0.55));
+  }
+  .form-panel { padding: 20px; }
+  .output-panel { padding: 20px; min-height: 620px; }
+
+  .step { padding: 17px 0; border-top: 1px solid var(--line); }
+  .step:first-child { padding-top: 2px; border-top: 0; }
+  .step-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; flex-wrap: wrap; }
+  .step-num {
+    font: 700 10px var(--mono); letter-spacing: 0.08em; color: var(--accent);
+    border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 7px;
+    background: var(--accent-dim); box-shadow: 0 0 16px var(--accent-dim);
+  }
+  h2 { margin: 0; font: 600 13px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .hint { margin: 6px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+  .hint code, .footer code { font-family: var(--mono); color: var(--text); background: rgba(255,255,255,0.05); border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; font-size: 10.5px; }
+  .mini { color: var(--dim); font: 10px var(--mono); letter-spacing: 0.03em; }
+  .ro-pill {
+    display: inline-flex; align-items: center; padding: 3px 7px;
+    border: 1px solid rgba(255, 207, 102, 0.24); border-radius: 999px;
+    background: rgba(255, 207, 102, 0.06); color: var(--warn);
+    font: 700 8.5px var(--mono); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  textarea[readonly] {
+    background: rgba(0,0,0,0.16); color: #a9c2b9;
+    border-color: rgba(255,255,255,0.06); cursor: default; resize: none;
+  }
+  textarea[readonly]:focus {
+    border-color: var(--line-strong); box-shadow: none;
+    background: rgba(0,0,0,0.16);
+  }
+
+  .badge {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
+    max-width: 100%; padding: 5px 9px; border-radius: 999px;
+    border: 1px solid var(--line); background: rgba(0,0,0,0.22);
+    color: var(--muted); font: 10px var(--mono);
+  }
+  .badge .dot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--muted); }
+  .badge.ok { color: var(--ok); border-color: rgba(61,255,162,0.28); }
+  .badge.ok .dot { background: var(--ok); box-shadow: 0 0 9px var(--ok); }
+  .badge.warn { color: var(--warn); border-color: rgba(255,207,102,0.28); }
+  .badge.warn .dot { background: var(--warn); box-shadow: 0 0 9px var(--warn); }
+  .badge.err { color: var(--danger); border-color: rgba(255,95,126,0.3); }
+  .badge.err .dot { background: var(--danger); box-shadow: 0 0 9px var(--danger); }
+
+  .field { margin-top: 11px; min-width: 0; }
+  .field:first-child { margin-top: 0; }
+  .field > label, .label-row label {
+    display: block; margin-bottom: 5px; color: var(--muted);
+    font: 700 9.5px var(--mono); letter-spacing: 0.10em; text-transform: uppercase;
+  }
+  .label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  input[type="text"], input[type="number"], select, textarea {
+    width: 100%; color: var(--text); background: rgba(0,0,0,0.30);
+    border: 1px solid rgba(255,255,255,0.10); border-radius: 10px;
+    padding: 9px 11px; font: 12px/1.5 var(--mono);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  input[type="text"]:hover, input[type="number"]:hover, select:hover, textarea:hover { border-color: var(--line-strong); }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim), 0 0 22px var(--accent-dim);
+    background: rgba(0,0,0,0.38);
+  }
+  textarea { resize: vertical; min-height: 76px; }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 30px; }
+  #domains { min-height: 78px; }
+  #caCert, #caKey { min-height: 132px; font-size: 10.5px; line-height: 1.45; }
+
+  .grid3 { display: grid; grid-template-columns: 1.1fr 0.85fr 1fr; gap: 10px; align-items: start; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+  .grid2 > .field, .grid3 > .field { margin-top: 0; }
+  .grid3 input[type="text"], .grid3 input[type="number"], .grid3 select { height: 38px; }
+  .input-unit { position: relative; }
+  .input-unit input { padding-right: 58px; }
+  .input-unit input { -moz-appearance: textfield; appearance: textfield; }
+  .input-unit input::-webkit-outer-spin-button,
+  .input-unit input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .input-unit span {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--dim); font: 9px var(--mono); letter-spacing: 0.04em; pointer-events: none;
+  }
+  .sr-only {
+    position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  .fold { margin-top: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(0,0,0,0.14); }
+  .fold > summary {
+    display: flex; align-items: center; gap: 8px; padding: 9px 11px;
+    cursor: pointer; list-style: none; color: var(--muted);
+    font: 600 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .fold > summary::-webkit-details-marker { display: none; }
+  .fold > summary::before { content: "▸"; color: var(--accent); font-size: 10px; transition: transform .15s; }
+  .fold[open] > summary::before { transform: rotate(90deg); }
+  .fold > summary .mini { margin-left: auto; text-transform: none; letter-spacing: 0; }
+  .fold-body { padding: 0 11px 12px; }
+
+  .checks { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; cursor: pointer; }
+  .check input { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; }
+
+  .san-bar { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; min-height: 24px; align-items: center; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 8px;
+    background: rgba(0,0,0,0.22); color: var(--text); font: 10.5px var(--mono);
+    overflow-wrap: anywhere;
+  }
+  .chip b { color: var(--accent); font-size: 8.5px; letter-spacing: 0.08em; }
+  .chip.ip b { color: var(--accent-2); }
+  .san-error { color: var(--danger); font: 10.5px var(--mono); }
+  .san-empty { color: var(--dim); font: 10.5px var(--mono); }
+  .san-actions { display: flex; gap: 6px; flex: none; }
+
+  .primary, .ghost, .mini-btn {
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: rgba(255,255,255,0.03); color: var(--text);
+    font: 600 11px var(--mono); letter-spacing: 0.04em; padding: 7px 10px;
+    transition: border-color .15s, background .15s, box-shadow .15s, transform .1s, filter .15s;
+  }
+  .primary:hover, .ghost:hover, .mini-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .primary:active, .ghost:active, .mini-btn:active { transform: translateY(1px); }
+  .primary:disabled { opacity: 0.65; cursor: wait; }
+  .mini-btn { padding: 3px 7px; font-size: 9.5px; border-radius: 6px; color: var(--muted); }
+  .primary {
+    border: 0; color: var(--accent-ink);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35), 0 0 26px var(--accent-dim);
+  }
+  .primary:hover { filter: brightness(1.07); box-shadow: 0 10px 34px rgba(0,0,0,0.4), 0 0 34px var(--glow); background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+  .primary.small { padding: 9px 13px; font-size: 10.5px; }
+  .ghost.small { padding: 8px 11px; font-size: 10.5px; }
+
+  .generate {
+    width: 100%; margin-top: 15px; padding: 13px 16px;
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    font-size: 12px; letter-spacing: 0.14em; border-radius: 11px;
+  }
+  .generate .arrow { font-size: 10px; }
+  .generate .spin { display: none; width: 13px; height: 13px; border: 2px solid rgba(0,0,0,0.25); border-top-color: var(--accent-ink); border-radius: 50%; animation: spin .8s linear infinite; }
+  .generate.loading .spin { display: inline-block; }
+  .generate.loading .arrow { display: none; }
+
+  .alert {
+    margin-top: 11px; border: 1px solid rgba(255,95,126,0.35); border-radius: 10px;
+    background: rgba(255,95,126,0.09); color: #ffc2cd; padding: 9px 11px;
+    font: 11px/1.5 var(--mono); overflow-wrap: anywhere;
+  }
+
+  .console { margin-top: 13px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.28); }
+  .console-head { display: flex; justify-content: space-between; padding: 6px 9px; border-bottom: 1px solid var(--line); color: var(--dim); font: 9px var(--mono); letter-spacing: 0.12em; text-transform: uppercase; }
+  .log { height: 128px; overflow: auto; padding: 7px 9px; font: 10px/1.65 var(--mono); }
+  .log-line { display: flex; gap: 7px; align-items: flex-start; }
+  .log-line .t { color: #536b64; flex: none; }
+  .log-line .p { flex: none; width: 9px; text-align: center; color: var(--muted); }
+  .log-line .m { color: var(--muted); overflow-wrap: anywhere; }
+  .log-line.ok .p, .log-line.ok .m { color: var(--ok); }
+  .log-line.warn .p, .log-line.warn .m { color: var(--warn); }
+  .log-line.err .p, .log-line.err .m { color: var(--danger); }
+
+  .out-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
+  .out-head h2 { font-size: 14px; }
+  .out-head .slash { color: var(--accent); }
+  .out-head .hint { margin-top: 4px; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 9px; font: 700 9px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid var(--line); }
+  .pill.ok { color: var(--ok); border-color: rgba(61,255,162,0.3); background: rgba(61,255,162,0.07); }
+  .pill.warn { color: var(--warn); border-color: rgba(255,207,102,0.3); background: rgba(255,207,102,0.06); }
+  .pill.err { color: var(--danger); border-color: rgba(255,95,126,0.3); background: rgba(255,95,126,0.06); }
+
+  .empty { min-height: 500px; display: grid; place-items: center; padding: 30px 0; }
+  .ascii {
+    margin: 0; color: var(--dim); font: 11.5px/1.6 var(--mono); white-space: pre;
+    text-align: left; text-shadow: 0 0 24px var(--accent-dim); max-width: 100%; overflow-x: auto;
+  }
+  .ascii .hl { color: var(--accent); }
+  .empty.busy .ascii { animation: pulse 1.2s ease-in-out infinite; }
+
+  .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 14px; }
+  .kv { border: 1px solid var(--line); border-radius: 10px; background: rgba(0,0,0,0.18); padding: 7px 9px; min-width: 0; }
+  .kv.wide { grid-column: 1 / -1; }
+  .kv .k { color: var(--dim); font: 700 8.5px var(--mono); letter-spacing: 0.10em; text-transform: uppercase; }
+  .kv .v { margin-top: 2px; font: 11px/1.45 var(--mono); overflow-wrap: anywhere; }
+
+  .warnbox { margin-top: 11px; border: 1px solid rgba(255,207,102,0.28); border-radius: 10px; background: rgba(255,207,102,0.06); padding: 8px 10px; }
+  .warnbox .wh { color: var(--warn); font: 700 9px var(--mono); letter-spacing: 0.1em; margin-bottom: 4px; }
+  .warnbox ul { margin: 0; padding-left: 16px; color: #e8d7a8; font: 10.5px/1.55 var(--mono); }
+  .warnbox li { margin: 2px 0; }
+
+  .tabs { display: flex; gap: 5px; flex-wrap: wrap; margin: 14px 0 8px; }
+  .tab {
+    border: 1px solid transparent; background: transparent; color: var(--muted);
+    border-radius: 7px; padding: 5px 9px; font: 600 10px var(--mono); letter-spacing: 0.04em;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.035); }
+  .tab[aria-selected="true"] { color: var(--accent); border-color: var(--line-strong); background: var(--accent-dim); }
+
+  .code-wrap { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: rgba(0,0,0,0.32); }
+  .code-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 9px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,0.025); }
+  .code-head > span:first-child { color: var(--accent); font: 10px var(--mono); overflow-wrap: anywhere; }
+  .code-actions { display: flex; gap: 5px; flex: none; }
+  pre.code {
+    margin: 0; padding: 11px; max-height: 350px; overflow: auto;
+    font: 10.5px/1.55 var(--mono); color: #d5e9e1; white-space: pre; tab-size: 2;
+  }
+  pre.code::-webkit-scrollbar, .log::-webkit-scrollbar { height: 8px; width: 8px; }
+  pre.code::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 99px; }
+
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .cmds { margin-top: 12px; }
+  .cmds pre.code { max-height: 420px; }
+  .cmds .fold-body { padding-top: 2px; }
+
+  .footer { margin-top: 26px; padding: 16px 4px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 10.5px; line-height: 1.6; }
+  .footer p { margin: 0 0 4px; }
+  .footer strong { color: var(--accent); font-family: var(--mono); letter-spacing: 0.06em; }
+  .footer .dim { color: var(--dim); }
+  .footer .support { margin: 12px 0 10px; }
+  .coffee {
+    display: inline-flex; align-items: center; gap: 9px;
+    border: 1px solid var(--accent); border-radius: 999px;
+    padding: 9px 16px; color: var(--accent); text-decoration: none;
+    background: linear-gradient(135deg, var(--accent-dim), transparent);
+    font: 700 11px var(--mono); letter-spacing: 0.06em;
+    box-shadow: 0 0 18px var(--accent-dim);
+    animation: coffeePulse 2.8s ease-in-out infinite;
+    transition: color .15s, background .15s, transform .15s, box-shadow .15s;
+  }
+  .coffee .cup { font-size: 14px; line-height: 1; filter: drop-shadow(0 0 6px var(--glow)); }
+  .coffee:hover {
+    color: var(--accent-ink); border-color: var(--accent);
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    transform: translateY(-1px); animation: none;
+    box-shadow: 0 8px 28px var(--glow);
+  }
+  .coffee:hover .cup { filter: none; }
+  @keyframes coffeePulse {
+    0%, 100% { box-shadow: 0 0 0 0 transparent, 0 0 16px var(--accent-dim); }
+    50% { box-shadow: 0 0 0 6px var(--accent-dim), 0 0 30px var(--glow); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .coffee { animation: none; }
+  }
+
+  .noscript {
+    position: relative; z-index: 60; margin: 0; padding: 12px 16px;
+    background: #3a111b; color: #ffd7de; border-bottom: 1px solid #ff5f7e;
+    font: 12px/1.5 var(--mono); text-align: center;
+  }
+  #country { text-transform: uppercase; }
+
+  #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; flex-direction: column; gap: 7px; max-width: min(360px, calc(100vw - 32px)); }
+  .toast {
+    border: 1px solid var(--line-strong); border-radius: 9px;
+    background: rgba(8, 16, 17, 0.92); backdrop-filter: blur(14px);
+    color: var(--text); padding: 9px 11px; font: 10.5px/1.4 var(--mono);
+    box-shadow: 0 12px 34px rgba(0,0,0,0.4); transition: opacity .25s, transform .25s;
+  }
+  .toast.ok { border-color: rgba(61,255,162,0.4); color: var(--ok); }
+  .toast.err { border-color: rgba(255,95,126,0.4); color: #ffc2cd; }
+  .toast.warn { border-color: rgba(255,207,102,0.4); color: var(--warn); }
+  .toast.out { opacity: 0; transform: translateY(6px); }
+
+  @media (max-width: 1040px) {
+    .layout { grid-template-columns: 1fr; }
+    .output-panel { min-height: auto; }
+    .empty { min-height: 300px; }
+  }
+  @media (max-width: 620px) {
+    .shell { padding: 14px 12px 30px; }
+    .topbar { align-items: flex-start; flex-direction: column; }
+    .top-actions { width: 100%; justify-content: space-between; }
+    .form-panel, .output-panel { padding: 15px; }
+    .grid3, .grid2 { grid-template-columns: 1fr; }
+    .summary { grid-template-columns: 1fr; }
+    .kv.wide { grid-column: auto; }
+    .badge { margin-left: 0; }
+    .san-bar { flex-direction: column; }
+    .san-actions { width: 100%; }
+    .ascii { font-size: 9px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+</style>
+</head>
+<body data-mode="hacker">
+<noscript><div class="noscript">JavaScript is disabled. This page generates keys and certificates entirely in the browser: it cannot work without JavaScript.</div></noscript>
+<canvas id="matrix" aria-hidden="true"></canvas>
+<div class="aurora" aria-hidden="true">
+  <span class="blob b1"></span>
+  <span class="blob b2"></span>
+  <span class="blob b3"></span>
+</div>
+<div class="scanlines" aria-hidden="true"></div>
+
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">[✓]</div>
+      <div>
+        <h1>eMudhra<span>Pwn</span> <small>by ShotokanZH</small></h1>
+        <p>X.509 certificate generator · air-gapped</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="net-pill" title="This page makes no network requests"><span class="dot"></span> OFFLINE</span>
+      <label class="mode-switch" title="Toggle hacker / glass theme">
+        <input type="checkbox" id="hackerToggle" checked>
+        <span class="track"><span class="knob"></span></span>
+        <span>HACKER</span>
+      </label>
+    </div>
+  </header>
+
+  <aside class="intel" aria-label="Background">
+    <span class="intel-tag">CONTEXT</span>
+    <p>
+      eMudhraPwn exists because of the October 2026 eMudhra certificate compromise. The embedded CA is one of the eight
+      compromised eMudhra intermediate CAs; its private key is trivially weak, which is what makes this generator possible.
+      <a href="https://blog.cloudflare.com/emudhra-certificate-compromise/" target="_blank" rel="noopener noreferrer">Read Cloudflare's analysis ↗</a>.
+      For authorized lab/testing use only — this is not a trusted CA.
+    </p>
+  </aside>
+
+  <main class="layout">
+    <section class="panel form-panel" aria-label="Certificate parameters">
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">01</span>
+          <h2>Certificate Authority</h2>
+          <span class="ro-pill" title="The CA is hardcoded in the page and cannot be changed from the UI">read-only</span>
+          <div id="caBadge" class="badge"><i class="dot"></i> analyzing…</div>
+        </div>
+        <p class="hint">Fixed CA embedded in the page: certificate and private key are shown read-only and are never transmitted.</p>
+        <details class="fold">
+          <summary><span>Embedded CA</span><span class="mini">cert.pem + private.pem · read-only</span></summary>
+          <div class="fold-body">
+            <div class="field">
+              <label for="caCert">CA certificate (PEM)</label>
+              <textarea id="caCert" readonly aria-readonly="true" spellcheck="false" autocomplete="off"></textarea>
+            </div>
+            <div class="field">
+              <label for="caKey">CA private key (PEM)</label>
+              <textarea id="caKey" readonly aria-readonly="true" spellcheck="false" autocomplete="off"></textarea>
+            </div>
+            <p class="hint">Values hardcoded in the HTML source. To change the CA, edit the file, not the UI.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">02</span>
+          <h2>Domains and IP addresses</h2>
+        </div>
+        <p class="hint">One per line or comma-separated. Supports wildcards <code>*.example.com</code>, IPv4 and IPv6.</p>
+        <div class="field">
+          <label for="domains">Subject Alternative Name (SAN)</label>
+          <textarea id="domains" spellcheck="false" autocomplete="off" placeholder="example.com, *.example.com, 10.0.0.5"></textarea>
+          <div class="san-bar">
+            <div id="sanPreview" class="chips"><span class="san-empty">No domains entered.</span></div>
+            <div class="san-actions">
+              <button type="button" id="wildcardBtn" class="mini-btn" title="Adds *. to the first domain">+ wildcard</button>
+              <button type="button" id="sampleBtn" class="mini-btn">demo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-head">
+          <span class="step-num">03</span>
+          <h2>Key and validity</h2>
+        </div>
+        <div class="grid3">
+          <div class="field">
+            <label for="keyType">Key type</label>
+            <select id="keyType">
+              <option value="rsa2048" selected>RSA 2048</option>
+              <option value="rsa3072">RSA 3072</option>
+              <option value="rsa4096">RSA 4096</option>
+              <option value="ec256">ECDSA P-256</option>
+              <option value="ec384">ECDSA P-384</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="days">Validity<span class="sr-only"> in days</span></label>
+            <div class="input-unit">
+              <input id="days" type="number" min="1" max="3975" value="365" inputmode="numeric">
+              <span aria-hidden="true">days</span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="baseName">File name</label>
+            <input id="baseName" type="text" placeholder="auto" spellcheck="false" autocomplete="off">
+          </div>
+        </div>
+        <p class="hint" id="keyHint">RSA 2048 · maximum compatibility</p>
+
+        <details class="fold">
+          <summary><span>Advanced parameters</span><span class="mini">subject · key usage</span></summary>
+          <div class="fold-body">
+            <div class="checks">
+              <label class="check"><input type="checkbox" id="clientAuth"> Add clientAuth (mTLS)</label>
+              <label class="check"><input type="checkbox" id="classicKey"> Legacy key format (PKCS#1 / SEC1)</label>
+            </div>
+            <div class="grid2">
+              <div class="field">
+                <label for="cn">Common Name (CN)</label>
+                <input id="cn" type="text" placeholder="auto from first domain" spellcheck="false" autocomplete="off" maxlength="64">
+              </div>
+              <div class="field">
+                <label for="org">Organization (O)</label>
+                <input id="org" type="text" placeholder="optional" spellcheck="false" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="ou">Organizational Unit (OU)</label>
+                <input id="ou" type="text" placeholder="optional" spellcheck="false" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="country">Country (C)</label>
+                <input id="country" type="text" placeholder="IT" maxlength="2" spellcheck="false" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="state">State / province (ST)</label>
+                <input id="state" type="text" placeholder="optional" spellcheck="false" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="locality">Locality (L)</label>
+                <input id="locality" type="text" placeholder="optional" spellcheck="false" autocomplete="off">
+              </div>
+            </div>
+            <p class="hint">If CN is empty, the first domain is used. CN is descriptive only: modern clients use SANs exclusively.</p>
+          </div>
+        </details>
+
+        <button type="button" id="generateBtn" class="primary generate">
+          <span class="arrow">▶</span><span class="btn-label">GENERATE CERTIFICATE</span><span class="spin" aria-hidden="true"></span>
+        </button>
+        <div id="alert" class="alert" role="alert" hidden></div>
+
+        <div class="console">
+          <div class="console-head"><span>console</span><span>local / offline</span></div>
+          <div id="log" class="log" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel output-panel" aria-label="Result">
+      <div class="out-head">
+        <div>
+          <h2><span class="slash">//</span> OUTPUT</h2>
+          <p class="hint">Artifacts ready for Nginx, Apache, HAProxy, curl.</p>
+        </div>
+        <div id="outPills" class="pills" hidden>
+          <span id="verifyPill" class="pill ok">signature verified</span>
+          <span id="trustPill" class="pill warn">CA not preinstalled</span>
+        </div>
+      </div>
+
+      <div id="emptyState" class="empty">
+<pre class="ascii">+--------------------------------------+
+|                                      |
+|            <span class="hl">[ NO SIGNAL ]</span>             |
+|                                      |
+|   01  inspect the CA                 |
+|   02  add domains                    |
+|   03  hit generate                   |
+|                                      |
+|   private key - CSR - CRT            |
+|   all in-browser, zero network       |
+|                                      |
++--------------------------------------+</pre>
+      </div>
+
+      <div id="result" hidden>
+        <div id="summary" class="summary"></div>
+        <div id="warnBox" class="warnbox" hidden></div>
+        <div class="tabs" id="tabs" role="tablist" aria-label="Generated files"></div>
+        <div class="code-wrap">
+          <div class="code-head">
+            <span id="fileName">—</span>
+            <span class="code-actions">
+              <button id="copyBtn" class="mini-btn" type="button">Copy</button>
+              <button id="dlBtn" class="mini-btn" type="button">Download</button>
+            </span>
+          </div>
+          <pre id="codePane" class="code" tabindex="0"></pre>
+        </div>
+        <div class="actions-row">
+          <button id="dlAll" class="primary small" type="button">Download all (.zip)</button>
+          <button id="regen" class="ghost small" type="button">Regenerate</button>
+        </div>
+        <details class="fold cmds">
+          <summary><span>Equivalent OpenSSL commands</span><span class="mini">verify · x509 · s_server</span></summary>
+          <div class="fold-body"><pre id="commandsPre" class="code"></pre></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><strong>eMudhraPwn by ShotokanZH</strong> · fully client-side X.509 generation · WebCrypto + hand-written DER.</p>
+    <p class="support">
+      <a class="coffee" href="https://ko-fi.com/shotokanzh" target="_blank" rel="noopener noreferrer" title="Support eMudhraPwn on Ko-fi">
+        <span class="cup" aria-hidden="true">☕</span> buy me a coffee?
+      </a>
+    </p>
+    <p>The CA private key never leaves the browser. No network requests are made by the page itself: CSP <code>connect-src 'none'</code>. External links (Cloudflare, Ko-fi) open only when clicked.</p>
+    <p class="dim">The certificate is cryptographically valid, but browsers only trust CAs in their trust store. Use this tool only with CAs you are authorized to use.</p>
+  </footer>
+</div>
+
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+(() => {
+  /* ============================================================
+     ASN.1 / OID constants
+     ============================================================ */
+  const OID = {
+    cn: '2.5.4.3',
+    c: '2.5.4.6',
+    l: '2.5.4.7',
+    st: '2.5.4.8',
+    o: '2.5.4.10',
+    ou: '2.5.4.11',
+    ecPublicKey: '1.2.840.10045.2.1',
+    p256: '1.2.840.10045.3.1.7',
+    p384: '1.3.132.0.34',
+    p521: '1.3.132.0.35',
+    ecdsaSha256: '1.2.840.10045.4.3.2',
+    ecdsaSha384: '1.2.840.10045.4.3.3',
+    ecdsaSha512: '1.2.840.10045.4.3.4',
+    rsaEncryption: '1.2.840.113549.1.1.1',
+    sha256Rsa: '1.2.840.113549.1.1.11',
+    basicConstraints: '2.5.29.19',
+    keyUsage: '2.5.29.15',
+    extKeyUsage: '2.5.29.37',
+    subjectAltName: '2.5.29.17',
+    subjectKeyId: '2.5.29.14',
+    authorityKeyId: '2.5.29.35',
+    serverAuth: '1.3.6.1.5.5.7.3.1',
+    clientAuth: '1.3.6.1.5.5.7.3.2',
+    csrExtensions: '1.2.840.113549.1.9.14'
+  };
+
+  const CURVES = {
+    [OID.p256]: { oid: OID.p256, name: 'P-256', hash: 'SHA-256', sigOid: OID.ecdsaSha256, bytes: 32 },
+    [OID.p384]: { oid: OID.p384, name: 'P-384', hash: 'SHA-384', sigOid: OID.ecdsaSha384, bytes: 48 },
+    [OID.p521]: { oid: OID.p521, name: 'P-521', hash: 'SHA-512', sigOid: OID.ecdsaSha512, bytes: 66 }
+  };
+  const CURVE_BY_NAME = {
+    'P-256': CURVES[OID.p256],
+    'P-384': CURVES[OID.p384],
+    'P-521': CURVES[OID.p521]
+  };
+
+  const SIG_NAMES = {
+    [OID.ecdsaSha256]: 'ECDSA SHA-256',
+    [OID.ecdsaSha384]: 'ECDSA SHA-384',
+    [OID.ecdsaSha512]: 'ECDSA SHA-512',
+    [OID.sha256Rsa]: 'RSA SHA-256',
+    '1.2.840.113549.1.1.12': 'RSA SHA-384',
+    '1.2.840.113549.1.1.13': 'RSA SHA-512',
+    '1.2.840.113549.1.1.5': 'RSA SHA-1'
+  };
+
+  const NAME_KEYS = {
+    [OID.cn]: 'CN',
+    [OID.c]: 'C',
+    [OID.l]: 'L',
+    [OID.st]: 'ST',
+    [OID.o]: 'O',
+    [OID.ou]: 'OU'
+  };
+
+  const DEFAULT_CA_CERT = `-----BEGIN CERTIFICATE-----
+MIIDaDCCAu6gAwIBAgIPKWkmwiejoVJjkrGUgqUEMAoGCCqGSM49BAMDMFYxCzAJ
+BgNVBAYTAklOMSUwIwYDVQQKDBxlTXVkaHJhIFRlY2hub2xvZ2llcyBMaW1pdGVk
+MSAwHgYDVQQDDBdlbVNpZ24gUm9vdCBUTFMgQ0EgLSBHMzAeFw0yNTA0MzAxNTM3
+NDFaFw00MDA0MjgxODMwMDBaMEAxCzAJBgNVBAYTAlVTMRQwEgYDVQQKDAtlTXVk
+aHJhIEluYzEbMBkGA1UEAwwSRU0gT1YgVExTIENBIC0gRzNDMHYwEAYHKoZIzj0C
+AQYFK4EEACIDYgAEE4JRzVKskpjByKrZdzId65fnCb0LTKCspV3IrVHc/J0ViaFZ
+fjpRIOHv1jHGPhg1ysrimGmmLhYx6KKBgatWYW3EXZGKvAnzqw5jz3kqpNztc4e+
+N7ulaVSfHAKycO1no4IBljCCAZIwHwYDVR0jBBgwFoAU4TqrIXzx401UrtRyt/2L
+WUIgkFQwHQYDVR0OBBYEFDTq6gzryQra+dDF4u2beMmHnhtsMB0GA1UdJQQWMBQG
+CCsGAQUFBwMBBggrBgEFBQcDAjBdBgNVHSAEVjBUMDkGCysGAQQBg44hAQABMCow
+KAYIKwYBBQUHAgEWHGh0dHA6Ly9yZXBvc2l0b3J5LmVtc2lnbi5jb20wDQYLKwYB
+BAGDjiEBAm4wCAYGZ4EMAQICMHUGCCsGAQUFBwEBBGkwZzAkBggrBgEFBQcwAYYY
+aHR0cDovL29jc3AtYy5lbXNpZ24uY29tMD8GCCsGAQUFBzAChjNodHRwOi8vcmVw
+b3NpdG9yeS5lbXNpZ24uY29tL2NlcnRzL0VNT1ZUTFNDQUczQy5wN2MwNwYDVR0f
+BDAwLjAsoCqgKIYmaHR0cDovL2NybC5lbXNpZ24uY29tLz9yb290dGxzY2FnMy5j
+cmwwDgYDVR0PAQH/BAQDAgEGMBIGA1UdEwEB/wQIMAYBAf8CAQAwCgYIKoZIzj0E
+AwMDaAAwZQIxAMSZt2xsPeumRdeSMSQ3CbzIZeQ/q7GDCWfeE1Pq+mhgA6gRM44c
+NVF3xJ+wsxJk+wIwFJbaDMokD8Ei6eNOiA8yUMYvfzQyngmrhZQMdPCK1SewrR79
+4rSb9vGqxZzelQth
+-----END CERTIFICATE-----`;
+
+  const DEFAULT_CA_KEY = `-----BEGIN EC PRIVATE KEY-----
+MIGkAgEBBDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAASgBwYFK4EEACKhZANiAAQTglHNUqySmMHIqtl3Mh3rl+cJvQtMoKyl
+XcitUdz8nRWJoVl+OlEg4e/WMcY+GDXKyuKYaaYuFjHoooGBq1ZhbcRdkYq8CfOr
+DmPPeSqk3O1zh743u6VpVJ8cArJw7Wc=
+-----END EC PRIVATE KEY-----`;
+
+  /* ============================================================
+     Binary utilities
+     ============================================================ */
+  const TE = new TextEncoder();
+  const TD = new TextDecoder();
+  const webcrypto = globalThis.crypto;
+
+  function requireWebCrypto() {
+    if (!webcrypto || !webcrypto.subtle) {
+      throw new Error('WebCrypto is not available. Use a modern browser (Chrome, Firefox, Edge, Safari) or serve the page from localhost.');
+    }
+  }
+
+  function concatBytes(...chunks) {
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const out = new Uint8Array(total);
+    let p = 0;
+    for (const c of chunks) { out.set(c, p); p += c.length; }
+    return out;
+  }
+
+  function asciiBytes(s) {
+    const out = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i) & 0x7f;
+    return out;
+  }
+
+  function hex(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += bytes[i].toString(16).padStart(2, '0');
+    return s;
+  }
+
+  function bytesToNumber(bytes) {
+    let n = 0;
+    for (let i = 0; i < bytes.length; i++) n = (n * 256) + bytes[i];
+    return n;
+  }
+
+  function randomBytes(n) {
+    const out = new Uint8Array(n);
+    webcrypto.getRandomValues(out);
+    return out;
+  }
+
+  function bytesToB64(bytes) {
+    let s = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(s);
+  }
+
+  function b64ToBytes(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function b64urlToBytes(s) {
+    const pad = s.length % 4 ? '='.repeat(4 - (s.length % 4)) : '';
+    return b64ToBytes(s.replace(/-/g, '+').replace(/_/g, '/') + pad);
+  }
+
+  function bytesToPem(der, label) {
+    const b64 = bytesToB64(der).replace(/(.{64})/g, '$1\n').replace(/\n$/, '');
+    return '-----BEGIN ' + label + '-----\n' + b64 + '\n-----END ' + label + '-----\n';
+  }
+
+  function findPemBlocks(text) {
+    const out = [];
+    const re = /-----BEGIN ([A-Z0-9 ]+)-----([\s\S]*?)-----END \1-----/g;
+    let m;
+    while ((m = re.exec(String(text || '')))) {
+      try {
+        out.push({ label: m[1].trim(), der: b64ToBytes(m[2].replace(/\s+/g, '')) });
+      } catch (_) { /* corrupt base64 block: ignored */ }
+    }
+    return out;
+  }
+
+  async function digest(alg, bytes) {
+    requireWebCrypto();
+    return new Uint8Array(await webcrypto.subtle.digest(alg, bytes));
+  }
+
+  /* ============================================================
+     DER encoder
+     ============================================================ */
+  function derLen(n) {
+    if (n < 0x80) return Uint8Array.of(n);
+    const parts = [];
+    while (n > 0) { parts.unshift(n & 0xff); n = Math.floor(n / 256); }
+    return Uint8Array.of(0x80 | parts.length, ...parts);
+  }
+
+  function tlv(tag, ...chunks) {
+    const content = concatBytes(...chunks);
+    return concatBytes(Uint8Array.of(tag), derLen(content.length), content);
+  }
+
+  function seq(...chunks) { return tlv(0x30, ...chunks); }
+  function set(...chunks) { return tlv(0x31, ...chunks); }
+  function octet(bytes) { return tlv(0x04, bytes); }
+  function bool(v) { return tlv(0x01, Uint8Array.of(v ? 0xff : 0x00)); }
+  function bitString(bytes, unused = 0) { return tlv(0x03, Uint8Array.of(unused), bytes); }
+  function nullDer() { return tlv(0x05); }
+  function utf8(s) { return tlv(0x0c, TE.encode(s)); }
+  function printable(s) { return tlv(0x13, asciiBytes(s)); }
+
+  function intFromBytes(bytes) {
+    let i = 0;
+    while (i < bytes.length - 1 && bytes[i] === 0 && !(bytes[i + 1] & 0x80)) i++;
+    let b = Array.from(bytes.slice(i));
+    if (b.length === 0) b = [0];
+    if (b[0] & 0x80) b.unshift(0);
+    return tlv(0x02, Uint8Array.from(b));
+  }
+
+  function intSmall(n) {
+    if (n === 0) return tlv(0x02, Uint8Array.of(0));
+    const b = [];
+    while (n > 0) { b.unshift(n & 0xff); n = Math.floor(n / 256); }
+    return intFromBytes(Uint8Array.from(b));
+  }
+
+  function oid(str) {
+    const parts = String(str).split('.').map(Number);
+    const out = [parts[0] * 40 + parts[1]];
+    for (let i = 2; i < parts.length; i++) {
+      let v = parts[i];
+      const st = [v & 0x7f];
+      v = Math.floor(v / 128);
+      while (v > 0) { st.unshift((v & 0x7f) | 0x80); v = Math.floor(v / 128); }
+      out.push(...st);
+    }
+    return tlv(0x06, Uint8Array.from(out));
+  }
+
+  function asn1Time(date) {
+    const iso = date.toISOString();
+    const compact = iso.slice(0, 19).replace(/[-:T]/g, '');
+    const year = date.getUTCFullYear();
+    if (year >= 1950 && year < 2050) {
+      return tlv(0x17, asciiBytes(compact.slice(2) + 'Z'));
+    }
+    return tlv(0x18, asciiBytes(compact + 'Z'));
+  }
+
+  function nameDer(attrs) {
+    const order = [
+      ['C', OID.c, true],
+      ['ST', OID.st, false],
+      ['L', OID.l, false],
+      ['O', OID.o, false],
+      ['OU', OID.ou, false],
+      ['CN', OID.cn, false]
+    ];
+    const rdns = [];
+    for (const [key, id, isPrintable] of order) {
+      const value = attrs[key];
+      if (value === undefined || value === null || String(value).trim() === '') continue;
+      const encoded = isPrintable ? printable(String(value)) : utf8(String(value));
+      rdns.push(set(seq(oid(id), encoded)));
+    }
+    return seq(...rdns);
+  }
+
+  function sigAlgForKey(key) {
+    if (key.type === 'ec') return seq(oid(key.sigOid));
+    return seq(oid(key.sigOid), nullDer());
+  }
+
+  function extension(id, critical, value) {
+    return seq(oid(id), ...(critical ? [bool(true)] : []), octet(value));
+  }
+
+  function basicConstraintsExt(isCA) {
+    return extension(OID.basicConstraints, true, seq(bool(isCA)));
+  }
+
+  function keyUsageExt(isRsa) {
+    return extension(OID.keyUsage, true, bitString(Uint8Array.of(isRsa ? 0xa0 : 0x80), isRsa ? 5 : 7));
+  }
+
+  function ekuExt(clientAuth) {
+    return extension(OID.extKeyUsage, false, seq(oid(OID.serverAuth), ...(clientAuth ? [oid(OID.clientAuth)] : [])));
+  }
+
+  function sanExt(domains) {
+    return extension(OID.subjectAltName, false, seq(...domains.map((d) => {
+      if (d.type === 'ip') return tlv(0x87, d.bytes);
+      return tlv(0x82, asciiBytes(d.value));
+    })));
+  }
+
+  /* ============================================================
+     DER parser
+     ============================================================ */
+  function parseDer(bytes, offset = 0) {
+    const start = offset;
+    if (offset >= bytes.length) throw new Error('Truncated DER.');
+    const tag = bytes[offset++];
+    let len = bytes[offset++];
+    if (len & 0x80) {
+      const n = len & 0x7f;
+      if (n === 0 || n > 4) throw new Error('Invalid DER length.');
+      len = 0;
+      for (let i = 0; i < n; i++) len = (len * 256) + bytes[offset++];
+    }
+    const contentStart = offset;
+    const end = offset + len;
+    if (end > bytes.length) throw new Error('Truncated DER.');
+    return {
+      tag,
+      constructed: !!(tag & 0x20),
+      start,
+      contentStart,
+      end,
+      content: bytes.subarray(contentStart, end),
+      raw: bytes.subarray(start, end),
+      bytes
+    };
+  }
+
+  function derChildren(node) {
+    const out = [];
+    let p = node.contentStart;
+    while (p < node.end) {
+      const child = parseDer(node.bytes, p);
+      out.push(child);
+      p = child.end;
+    }
+    return out;
+  }
+
+  function oidToString(node) {
+    const b = node.content;
+    const parts = [];
+    let v = 0;
+    for (let i = 0; i < b.length; i++) {
+      v = (v * 128) + (b[i] & 0x7f);
+      if (!(b[i] & 0x80)) {
+        if (parts.length === 0) {
+          const first = v < 40 ? 0 : (v < 80 ? 1 : 2);
+          parts.push(first, v - (first * 40));
+        } else {
+          parts.push(v);
+        }
+        v = 0;
+      }
+    }
+    return parts.join('.');
+  }
+
+  function derString(node) {
+    switch (node.tag) {
+      case 0x0c: return TD.decode(node.content);
+      case 0x1e: {
+        let s = '';
+        for (let i = 0; i + 1 < node.content.length; i += 2) {
+          s += String.fromCharCode((node.content[i] << 8) | node.content[i + 1]);
+        }
+        return s;
+      }
+      default: {
+        let s = '';
+        for (let i = 0; i < node.content.length; i++) s += String.fromCharCode(node.content[i]);
+        return s;
+      }
+    }
+  }
+
+  function parseName(node) {
+    const out = {};
+    for (const rdn of derChildren(node)) {
+      for (const atv of derChildren(rdn)) {
+        const parts = derChildren(atv);
+        if (parts.length < 2) continue;
+        const key = NAME_KEYS[oidToString(parts[0])];
+        if (key) out[key] = derString(parts[1]);
+      }
+    }
+    return out;
+  }
+
+  function formatName(attrs) {
+    return ['CN', 'O', 'OU', 'C', 'ST', 'L']
+      .filter((k) => attrs[k])
+      .map((k) => k + '=' + attrs[k])
+      .join(', ');
+  }
+
+  function parseTimeNode(node) {
+    if (!node) throw new Error('Missing ASN.1 date.');
+    const raw = derString(node);
+    const core = (raw.endsWith('Z') ? raw.slice(0, -1) : raw).replace(/\.\d+$/, '');
+    let year, rest;
+    if (node.tag === 0x17) {
+      if (core.length !== 10 && core.length !== 12) throw new Error('Invalid UTCTime.');
+      const yy = Number(core.slice(0, 2));
+      year = yy >= 50 ? 1900 + yy : 2000 + yy;
+      rest = core.slice(2);
+    } else if (node.tag === 0x18) {
+      if (core.length !== 12 && core.length !== 14) throw new Error('Invalid GeneralizedTime.');
+      year = Number(core.slice(0, 4));
+      rest = core.slice(4);
+    } else {
+      throw new Error('Unsupported ASN.1 date format.');
+    }
+    const mo = Number(rest.slice(0, 2));
+    const d = Number(rest.slice(2, 4));
+    const h = Number(rest.slice(4, 6));
+    const mi = Number(rest.slice(6, 8));
+    const sec = rest.length >= 10 ? Number(rest.slice(8, 10)) : 0;
+    return new Date(Date.UTC(year, mo - 1, d, h, mi, sec));
+  }
+
+  function parseExtensions(tbs) {
+    const exts = {};
+    for (const child of derChildren(tbs)) {
+      if (child.tag !== 0xa3) continue;
+      const wrap = derChildren(child);
+      const list = wrap[0];
+      if (!list) continue;
+      for (const ext of derChildren(list)) {
+        const parts = derChildren(ext);
+        if (parts.length < 2) continue;
+        const id = oidToString(parts[0]);
+        let idx = 1;
+        let critical = false;
+        if (parts[idx].tag === 0x01) {
+          critical = parts[idx].content[0] !== 0;
+          idx++;
+        }
+        const valueNode = parts[idx];
+        if (!valueNode || valueNode.tag !== 0x04) continue;
+        exts[id] = { critical, value: valueNode.content };
+      }
+    }
+    return exts;
+  }
+
+  function parseSpki(spkiNode) {
+    const parts = derChildren(spkiNode);
+    const alg = parts[0];
+    const bits = parts[1];
+    if (!alg || !bits || bits.tag !== 0x03) throw new Error('Invalid SubjectPublicKeyInfo.');
+    const algParts = derChildren(alg);
+    const algOid = oidToString(algParts[0]);
+    const publicKeyBits = bits.content.subarray(1);
+
+    if (algOid === OID.ecPublicKey) {
+      const curveNode = algParts[1];
+      if (!curveNode || curveNode.tag !== 0x06) throw new Error('Missing or unsupported EC parameters.');
+      const curveOid = oidToString(curveNode);
+      const curve = CURVES[curveOid];
+      if (!curve) throw new Error('Unsupported EC curve: ' + curveOid);
+      return {
+        type: 'ec',
+        curveOid,
+        namedCurve: curve.name,
+        hash: curve.hash,
+        sigOid: curve.sigOid,
+        publicKeyBits,
+        spkiRaw: spkiNode.raw
+      };
+    }
+
+    if (algOid === OID.rsaEncryption) {
+      return {
+        type: 'rsa',
+        hash: 'SHA-256',
+        sigOid: OID.sha256Rsa,
+        publicKeyBits,
+        spkiRaw: spkiNode.raw
+      };
+    }
+
+    throw new Error('Unsupported public key type: ' + algOid);
+  }
+
+  function parseCertificate(der) {
+    const root = parseDer(der);
+    if (root.tag !== 0x30) throw new Error('Invalid certificate DER.');
+    const top = derChildren(root);
+    if (top.length < 3) throw new Error('Invalid X.509 certificate.');
+    const tbs = top[0];
+    const sigAlgNode = top[1];
+    const sigValue = top[2];
+
+    const kids = derChildren(tbs);
+    let i = 0;
+    let version = 1;
+    if (kids[i] && kids[i].tag === 0xa0) {
+      const v = derChildren(kids[i])[0];
+      version = v ? bytesToNumber(v.content) + 1 : 1;
+      i++;
+    }
+    const serialNode = kids[i++];
+    const tbsSigAlg = kids[i++];
+    const issuerNode = kids[i++];
+    const validityNode = kids[i++];
+    const subjectNode = kids[i++];
+    const spkiNode = kids[i++];
+    if (!serialNode || !tbsSigAlg || !issuerNode || !validityNode || !subjectNode || !spkiNode) {
+      throw new Error('Invalid certificate structure.');
+    }
+    const validity = derChildren(validityNode);
+    const notBefore = parseTimeNode(validity[0]);
+    const notAfter = parseTimeNode(validity[1]);
+    const issuer = parseName(issuerNode);
+    const subject = parseName(subjectNode);
+
+    return {
+      der,
+      version,
+      serial: serialNode.content,
+      serialHex: (hex(serialNode.content).replace(/^(00)+/, '') || '00'),
+      issuerRaw: issuerNode.raw,
+      subjectRaw: subjectNode.raw,
+      issuer,
+      subject,
+      issuerString: formatName(issuer),
+      subjectString: formatName(subject),
+      notBefore,
+      notAfter,
+      spkiRaw: spkiNode.raw,
+      key: parseSpki(spkiNode),
+      sigAlgOid: oidToString(derChildren(sigAlgNode)[0]),
+      extensions: parseExtensions(tbs)
+    };
+  }
+
+  function analyzeCaCert(pem) {
+    const blocks = findPemBlocks(pem);
+    const block = blocks.find((b) => b.label === 'CERTIFICATE');
+    if (!block) throw new Error('No PEM certificate found: a -----BEGIN CERTIFICATE----- block is required.');
+    const cert = parseCertificate(block.der);
+
+    let isCA = false;
+    let pathLen = null;
+    const bc = cert.extensions[OID.basicConstraints];
+    if (bc) {
+      const inner = parseDer(bc.value);
+      if (inner.tag === 0x30) {
+        for (const c of derChildren(inner)) {
+          if (c.tag === 0x01) isCA = c.content[0] !== 0;
+          if (c.tag === 0x02) pathLen = bytesToNumber(c.content);
+        }
+      }
+    }
+
+    const ku = cert.extensions[OID.keyUsage];
+    let keyCertSign = true;
+    if (ku) {
+      keyCertSign = false;
+      const inner = parseDer(ku.value);
+      if (inner.tag === 0x03 && inner.content.length >= 1) {
+        keyCertSign = !!(inner.content[1] & 0x04);
+      }
+    }
+
+    let ski = null;
+    const skiExt = cert.extensions[OID.subjectKeyId];
+    if (skiExt) {
+      const inner = parseDer(skiExt.value);
+      if (inner.tag === 0x04) ski = inner.content;
+    }
+
+    let aki = null;
+    const akiExt = cert.extensions[OID.authorityKeyId];
+    if (akiExt) {
+      const inner = parseDer(akiExt.value);
+      for (const c of derChildren(inner)) {
+        if (c.tag === 0x80) aki = c.content;
+      }
+    }
+
+    return {
+      ...cert,
+      isCA,
+      pathLen,
+      keyCertSign,
+      ski,
+      aki,
+      sigAlgName: SIG_NAMES[cert.sigAlgOid] || cert.sigAlgOid,
+      certPem: bytesToPem(block.der, 'CERTIFICATE')
+    };
+  }
+
+  /* ============================================================
+     Domains / IP
+     ============================================================ */
+  function normalizeIPv4(s) {
+    if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(s)) return null;
+    const parts = s.split('.').map(Number);
+    if (parts.some((p) => p < 0 || p > 255)) return null;
+    return parts.join('.');
+  }
+
+  function parseIPv6Bytes(input) {
+    let s = String(input).trim().toLowerCase();
+    if (!s.includes(':')) return null;
+    if (s.includes('%')) return null;
+
+    if (s.includes('.')) {
+      const idx = s.lastIndexOf(':');
+      if (idx < 0) return null;
+      const v4 = normalizeIPv4(s.slice(idx + 1));
+      if (!v4) return null;
+      const o = v4.split('.').map(Number);
+      s = s.slice(0, idx + 1) + ((o[0] << 8) | o[1]).toString(16) + ':' + ((o[2] << 8) | o[3]).toString(16);
+    }
+
+    const halves = s.split('::');
+    if (halves.length > 2) return null;
+    let left = halves[0] ? halves[0].split(':') : [];
+    let right = halves.length === 2 ? (halves[1] ? halves[1].split(':') : []) : [];
+    if (left.length + right.length > 8) return null;
+    if (halves.length === 2) {
+      const missing = 8 - left.length - right.length;
+      if (missing < 1) return null;
+      left = left.concat(new Array(missing).fill('0'), right);
+    } else if (left.length !== 8) {
+      return null;
+    }
+
+    const out = new Uint8Array(16);
+    for (let i = 0; i < 8; i++) {
+      const g = left[i];
+      if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+      const v = parseInt(g, 16);
+      out[i * 2] = v >> 8;
+      out[i * 2 + 1] = v & 0xff;
+    }
+    return out;
+  }
+
+  function isValidDnsName(s) {
+    if (!s || s.length > 253) return false;
+    const labels = s.split('.');
+    for (const label of labels) {
+      if (!label || label.length > 63) return false;
+      if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label)) return false;
+    }
+    return true;
+  }
+
+  function parseDomains(input) {
+    const tokens = String(input || '').split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
+    if (!tokens.length) throw new Error('Enter at least one domain or IP address.');
+    const seen = new Set();
+    const out = [];
+    const invalid = [];
+
+    for (const raw of tokens) {
+      let s = raw;
+
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
+        try {
+          s = new URL(s).hostname;
+          if (s.startsWith('[') && s.endsWith(']')) s = s.slice(1, -1);
+        } catch (_) {
+          invalid.push(raw);
+          continue;
+        }
+      } else if (s.startsWith('[')) {
+        const end = s.indexOf(']');
+        if (end > 0) {
+          const rest = s.slice(end + 1);
+          if (rest && !/^:\d+$/.test(rest)) {
+            invalid.push(raw);
+            continue;
+          }
+          s = s.slice(1, end);
+        }
+      }
+
+      if (s.endsWith('.')) s = s.slice(0, -1);
+
+      const ip6 = parseIPv6Bytes(s);
+      if (ip6) {
+        const key = 'ip:' + hex(ip6);
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ type: 'ip', version: 6, value: s, display: s, bytes: ip6 });
+        }
+        continue;
+      }
+
+      let v4 = normalizeIPv4(s);
+      if (!v4 && /^[^:]+:\d+$/.test(s)) v4 = normalizeIPv4(s.replace(/:\d+$/, ''));
+      if (v4) {
+        const bytes = Uint8Array.from(v4.split('.').map(Number));
+        const key = 'ip:' + hex(bytes);
+        if (!seen.has(key)) {
+          seen.add(key);
+          out.push({ type: 'ip', version: 4, value: v4, display: v4, bytes });
+        }
+        continue;
+      }
+
+      if (/^\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?$/.test(s)) {
+        invalid.push(raw);
+        continue;
+      }
+
+      let wildcard = false;
+      let host = s;
+      if (host.startsWith('*.')) {
+        wildcard = true;
+        host = host.slice(2);
+      }
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(host)) {
+        try { host = new URL(host).hostname; } catch (_) { invalid.push(raw); continue; }
+      } else if (/^[^:]+:\d+$/.test(host)) {
+        host = host.replace(/:\d+$/, '');
+      }
+      host = host.replace(/\.$/, '');
+      if (/[^\x00-\x7f]/.test(host)) {
+        try { host = new URL('http://' + host).hostname.replace(/\.$/, ''); } catch (_) { invalid.push(raw); continue; }
+      }
+      host = host.toLowerCase();
+      if (!isValidDnsName(host) || host.includes('*') || (wildcard ? 2 : 0) + host.length > 253) {
+        invalid.push(raw);
+        continue;
+      }
+      const value = (wildcard ? '*.' : '') + host;
+      const key = 'dns:' + value;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push({ type: 'dns', wildcard, value, display: value });
+      }
+    }
+
+    if (invalid.length) throw new Error('Invalid entries: ' + invalid.join(', '));
+    if (!out.length) throw new Error('No valid domains entered.');
+    return out;
+  }
+
+  function safeBaseName(input) {
+    let s = String(input || '').trim().toLowerCase();
+    s = s.replace(/\.(pem|crt|cer|key|csr|zip)$/, '');
+    s = s.replace(/^\*\./, 'wildcard.');
+    s = s.replace(/[^a-z0-9._-]+/g, '-');
+    s = s.replace(/^[.\-_]+|[.\-_]+$/g, '');
+    if (!s) s = 'certificate';
+    if (s.length > 80) s = s.slice(0, 80);
+    return s;
+  }
+
+  /* ============================================================
+     Crypto / WebCrypto
+     ============================================================ */
+  function keyLabel(key) {
+    return key.type === 'ec' ? 'EC ' + key.namedCurve : 'RSA';
+  }
+
+  function sigAlgLabel(key) {
+    return key.type === 'ec'
+      ? 'ECDSA ' + key.namedCurve + ' · ' + key.hash
+      : 'RSA PKCS#1 v1.5 · SHA-256';
+  }
+
+  function keySpecFromString(value) {
+    switch (value) {
+      case 'rsa2048': return { type: 'rsa', bits: 2048, label: 'RSA 2048' };
+      case 'rsa3072': return { type: 'rsa', bits: 3072, label: 'RSA 3072' };
+      case 'rsa4096': return { type: 'rsa', bits: 4096, label: 'RSA 4096' };
+      case 'ec256': return { type: 'ec', curve: 'P-256', label: 'ECDSA P-256' };
+      case 'ec384': return { type: 'ec', curve: 'P-384', label: 'ECDSA P-384' };
+      default: throw new Error('Unknown key type.');
+    }
+  }
+
+  async function generateSiteKey(spec) {
+    requireWebCrypto();
+    if (spec.type === 'rsa') {
+      const kp = await webcrypto.subtle.generateKey({
+        name: 'RSASSA-PKCS1-v1_5',
+        modulusLength: spec.bits,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: 'SHA-256'
+      }, true, ['sign', 'verify']);
+      const spki = new Uint8Array(await webcrypto.subtle.exportKey('spki', kp.publicKey));
+      return {
+        privateKey: kp.privateKey,
+        publicKey: kp.publicKey,
+        spki,
+        key: { type: 'rsa', hash: 'SHA-256', sigOid: OID.sha256Rsa, label: 'RSA ' + spec.bits },
+        spec
+      };
+    }
+
+    const curve = CURVE_BY_NAME[spec.curve];
+    if (!curve) throw new Error('Unsupported curve.');
+    const kp = await webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: spec.curve }, true, ['sign', 'verify']);
+    const spki = new Uint8Array(await webcrypto.subtle.exportKey('spki', kp.publicKey));
+    return {
+      privateKey: kp.privateKey,
+      publicKey: kp.publicKey,
+      spki,
+      key: { type: 'ec', hash: curve.hash, namedCurve: spec.curve, sigOid: curve.sigOid, label: 'ECDSA ' + spec.curve },
+      spec
+    };
+  }
+
+  function publicKeyBitsFromSpki(spkiDer) {
+    const parts = derChildren(parseDer(spkiDer));
+    if (!parts[1] || parts[1].tag !== 0x03) throw new Error('Invalid SPKI.');
+    return parts[1].content.subarray(1);
+  }
+
+  function ecdsaRawToDer(raw) {
+    if (raw.length % 2 !== 0) throw new Error('Invalid ECDSA signature.');
+    const half = raw.length / 2;
+    return seq(intFromBytes(raw.subarray(0, half)), intFromBytes(raw.subarray(half)));
+  }
+
+  async function signRaw(privateKey, key, data) {
+    requireWebCrypto();
+    if (key.type === 'ec') {
+      const raw = new Uint8Array(await webcrypto.subtle.sign({ name: 'ECDSA', hash: key.hash }, privateKey, data));
+      return { raw, der: ecdsaRawToDer(raw) };
+    }
+    const raw = new Uint8Array(await webcrypto.subtle.sign({ name: 'RSASSA-PKCS1-v1_5' }, privateKey, data));
+    return { raw, der: raw };
+  }
+
+  async function verifyRaw(publicKey, key, signature, data) {
+    if (key.type === 'ec') {
+      return webcrypto.subtle.verify({ name: 'ECDSA', hash: key.hash }, publicKey, signature, data);
+    }
+    return webcrypto.subtle.verify({ name: 'RSASSA-PKCS1-v1_5' }, publicKey, signature, data);
+  }
+
+  function getPemKeyBlock(pem) {
+    const blocks = findPemBlocks(pem);
+    if (!blocks.length) throw new Error('No PEM private key found.');
+    const encrypted = blocks.find((b) => b.label === 'ENCRYPTED PRIVATE KEY');
+    if (encrypted) throw new Error('The CA private key is encrypted: provide an unencrypted PEM key.');
+    const key = blocks.find((b) => /PRIVATE KEY$/.test(b.label));
+    if (!key) throw new Error('No -----BEGIN ... PRIVATE KEY----- block found.');
+    return key;
+  }
+
+  function inspectPkcs8(der) {
+    try {
+      const parts = derChildren(parseDer(der));
+      const alg = parts[1];
+      if (!alg) return null;
+      const algParts = derChildren(alg);
+      const algOid = oidToString(algParts[0]);
+      if (algOid === OID.ecPublicKey) {
+        const curve = algParts[1] && algParts[1].tag === 0x06 ? oidToString(algParts[1]) : null;
+        return { type: 'ec', curveOid: curve };
+      }
+      if (algOid === OID.rsaEncryption) return { type: 'rsa' };
+      return { type: 'unknown', oid: algOid };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function sec1CurveOid(der) {
+    try {
+      for (const child of derChildren(parseDer(der))) {
+        if (child.tag === 0xa0) {
+          const inner = derChildren(child)[0];
+          if (inner && inner.tag === 0x06) return oidToString(inner);
+        }
+      }
+    } catch (_) { /* optional parameters unreadable */ }
+    return null;
+  }
+
+  function toPkcs8(block, ca) {
+    if (block.label === 'PRIVATE KEY') return block.der;
+    if (block.label === 'EC PRIVATE KEY') {
+      if (ca.key.type !== 'ec') throw new Error('The private key is EC but the CA certificate is not EC.');
+      const curve = sec1CurveOid(block.der);
+      if (curve && curve !== ca.key.curveOid) {
+        throw new Error('The private key uses a different curve than the CA certificate.');
+      }
+      return seq(intSmall(0), seq(oid(OID.ecPublicKey), oid(ca.key.curveOid)), octet(block.der));
+    }
+    if (block.label === 'RSA PRIVATE KEY') {
+      if (ca.key.type !== 'rsa') throw new Error('The private key is RSA but the CA certificate is not RSA.');
+      return seq(intSmall(0), seq(oid(OID.rsaEncryption), nullDer()), octet(block.der));
+    }
+    throw new Error('Unsupported private key format: ' + block.label);
+  }
+
+  async function importCaPrivateKey(ca, pem) {
+    const block = getPemKeyBlock(pem);
+    const pkcs8 = toPkcs8(block, ca);
+    const meta = inspectPkcs8(pkcs8);
+    if (meta && meta.type !== ca.key.type) {
+      throw new Error('The private key is ' + meta.type.toUpperCase() + ' but the CA certificate is ' + ca.key.type.toUpperCase() + ': they are not a pair.');
+    }
+    if (meta && meta.type === 'ec' && meta.curveOid && ca.key.curveOid && meta.curveOid !== ca.key.curveOid) {
+      throw new Error('The private key uses a different curve than the CA certificate.');
+    }
+    try {
+      if (ca.key.type === 'ec') {
+        return await webcrypto.subtle.importKey('pkcs8', pkcs8, { name: 'ECDSA', namedCurve: ca.key.namedCurve }, false, ['sign']);
+      }
+      return await webcrypto.subtle.importKey('pkcs8', pkcs8, { name: 'RSASSA-PKCS1-v1_5', hash: ca.key.hash }, false, ['sign']);
+    } catch (e) {
+      throw new Error('Unable to import the CA private key. Check that it matches the certificate (' + e.message + ').');
+    }
+  }
+
+  async function importCaPublicKey(ca) {
+    if (ca.key.type === 'ec') {
+      return webcrypto.subtle.importKey('spki', ca.spkiRaw, { name: 'ECDSA', namedCurve: ca.key.namedCurve }, false, ['verify']);
+    }
+    return webcrypto.subtle.importKey('spki', ca.spkiRaw, { name: 'RSASSA-PKCS1-v1_5', hash: ca.key.hash }, false, ['verify']);
+  }
+
+  async function exportSitePrivateKey(site, classic) {
+    if (!classic) {
+      const der = new Uint8Array(await webcrypto.subtle.exportKey('pkcs8', site.privateKey));
+      return { der, label: 'PRIVATE KEY' };
+    }
+
+    const jwk = await webcrypto.subtle.exportKey('jwk', site.privateKey);
+    if (site.key.type === 'rsa') {
+      if (!jwk.qi) throw new Error('The browser did not export the RSA key CRT parameters.');
+      const der = seq(
+        intSmall(0),
+        intFromBytes(b64urlToBytes(jwk.n)),
+        intFromBytes(b64urlToBytes(jwk.e)),
+        intFromBytes(b64urlToBytes(jwk.d)),
+        intFromBytes(b64urlToBytes(jwk.p)),
+        intFromBytes(b64urlToBytes(jwk.q)),
+        intFromBytes(b64urlToBytes(jwk.dp)),
+        intFromBytes(b64urlToBytes(jwk.dq)),
+        intFromBytes(b64urlToBytes(jwk.qi))
+      );
+      return { der, label: 'RSA PRIVATE KEY' };
+    }
+
+    const curve = CURVE_BY_NAME[site.spec.curve];
+    const d = b64urlToBytes(jwk.d);
+    const x = b64urlToBytes(jwk.x);
+    const y = b64urlToBytes(jwk.y);
+    const der = seq(
+      intSmall(1),
+      octet(d),
+      tlv(0xa0, oid(curve.oid)),
+      tlv(0xa1, bitString(concatBytes(Uint8Array.of(0x04), x, y)))
+    );
+    return { der, label: 'EC PRIVATE KEY' };
+  }
+
+  /* ============================================================
+     X.509 generation
+     ============================================================ */
+  async function generate(opts) {
+    opts = opts || {};
+    const emit = typeof opts.log === 'function' ? opts.log : () => {};
+    requireWebCrypto();
+
+    const caPem = String(opts.caCertPem || '');
+    const keyPem = String(opts.caKeyPem || '');
+    if (!caPem.trim()) throw new Error('Enter the CA certificate PEM.');
+    if (!keyPem.trim()) throw new Error('Enter the CA private key PEM.');
+
+    emit('info', 'Parsing CA certificate…');
+    const ca = analyzeCaCert(caPem);
+    if (!ca.isCA) throw new Error('The certificate is not a CA (basicConstraints CA:TRUE missing).');
+    if (!ca.keyCertSign) throw new Error('The CA does not have keyCertSign permission in keyUsage.');
+    emit('ok', 'CA: ' + ca.subjectString + ' · ' + keyLabel(ca.key));
+    if (ca.notAfter.getTime() < Date.now()) {
+      emit('warn', 'CA expired on ' + ca.notAfter.toISOString().slice(0, 10) + '.');
+    } else if (ca.notAfter.getTime() - Date.now() < 30 * 86400000) {
+      emit('warn', 'CA expires in less than 30 days (' + ca.notAfter.toISOString().slice(0, 10) + ').');
+    }
+
+    const domains = parseDomains(opts.domains || '');
+    emit('ok', domains.length + ' SAN entries: ' + domains.map((d) => d.value).join(', '));
+
+    emit('info', 'Importing and verifying the CA private key…');
+    const caPrivate = await importCaPrivateKey(ca, keyPem);
+    const caPublic = await importCaPublicKey(ca);
+    const challenge = randomBytes(48);
+    const challengeSig = await signRaw(caPrivate, ca.key, challenge);
+    const paired = await verifyRaw(caPublic, ca.key, challengeSig.raw, challenge);
+    if (!paired) throw new Error('The CA private key does not match the CA certificate.');
+    emit('ok', 'CA private key verified.');
+
+    const spec = keySpecFromString(opts.keyType || 'rsa2048');
+    emit('info', 'Generating site key (' + spec.label + ')…');
+    const site = await generateSiteKey(spec);
+    emit('ok', 'Site key generated.');
+
+    const subjectIn = opts.subject || {};
+    const cn = String(subjectIn.CN || '').trim() || domains[0].value;
+    if (cn.length > 64) throw new Error('Common Name exceeds 64 characters: set a shorter one in advanced parameters.');
+    const country = String(subjectIn.C || '').trim().toUpperCase();
+    if (country && !/^[A-Z]{2}$/.test(country)) throw new Error('Country (C) must be a 2-letter country code.');
+
+    const subjectAttrs = {
+      C: country,
+      ST: String(subjectIn.ST || '').trim(),
+      L: String(subjectIn.L || '').trim(),
+      O: String(subjectIn.O || '').trim(),
+      OU: String(subjectIn.OU || '').trim(),
+      CN: cn
+    };
+    const subjectRaw = nameDer(subjectAttrs);
+
+    const days = Math.min(3975, Math.max(1, Math.trunc(Number(opts.days) || 365)));
+    const clientAuth = !!opts.clientAuth;
+    const siteIsRsa = site.key.type === 'rsa';
+
+    emit('info', 'Building and signing the CSR…');
+    const csrExtensions = [
+      basicConstraintsExt(false),
+      keyUsageExt(siteIsRsa),
+      ekuExt(clientAuth),
+      sanExt(domains)
+    ];
+    const csrAttribute = seq(oid(OID.csrExtensions), set(seq(...csrExtensions)));
+    const csrInfo = seq(
+      intSmall(0),
+      subjectRaw,
+      site.spki,
+      tlv(0xa0, csrAttribute)
+    );
+    const csrSignature = await signRaw(site.privateKey, site.key, csrInfo);
+    const csrVerified = await verifyRaw(site.publicKey, site.key, csrSignature.raw, csrInfo);
+    if (!csrVerified) throw new Error('Internal CSR verification failed.');
+    const csrDer = seq(csrInfo, sigAlgForKey(site.key), bitString(csrSignature.der));
+    emit('ok', 'CSR signed and verified.');
+
+    const caSki = ca.ski || await digest('SHA-1', ca.key.publicKeyBits);
+    const siteSki = await digest('SHA-1', publicKeyBitsFromSpki(site.spki));
+
+    emit('info', 'Issuing certificate and signing with the CA…');
+    const serial = randomBytes(16);
+    serial[0] &= 0x7f;
+    if (serial.every((b) => b === 0)) serial[15] = 1;
+
+    const notBefore = new Date(Date.now() - 3600000);
+    const notAfter = new Date(Date.now() + days * 86400000);
+    const certSigAlg = sigAlgForKey(ca.key);
+
+    const certExtensions = [
+      basicConstraintsExt(false),
+      keyUsageExt(siteIsRsa),
+      ekuExt(clientAuth),
+      sanExt(domains),
+      extension(OID.subjectKeyId, false, octet(siteSki)),
+      extension(OID.authorityKeyId, false, seq(tlv(0x80, caSki)))
+    ];
+
+    const tbs = seq(
+      tlv(0xa0, intSmall(2)),
+      intFromBytes(serial),
+      certSigAlg,
+      ca.subjectRaw,
+      seq(asn1Time(notBefore), asn1Time(notAfter)),
+      subjectRaw,
+      site.spki,
+      tlv(0xa3, seq(...certExtensions))
+    );
+
+    const certSignature = await signRaw(caPrivate, ca.key, tbs);
+    const certVerified = await verifyRaw(caPublic, ca.key, certSignature.raw, tbs);
+    if (!certVerified) throw new Error('Certificate signature verification failed.');
+    const certDer = seq(tbs, certSigAlg, bitString(certSignature.der));
+    emit('ok', 'Certificate signature verified.');
+
+    try { parseCertificate(certDer); }
+    catch (e) { throw new Error('Internal certificate encoding error: ' + e.message); }
+
+    const keyOut = await exportSitePrivateKey(site, !!opts.classicKey);
+    const baseName = safeBaseName(opts.baseName || domains[0].value);
+    const certPem = bytesToPem(certDer, 'CERTIFICATE');
+    const keyPemOut = bytesToPem(keyOut.der, keyOut.label);
+    const csrPem = bytesToPem(csrDer, 'CERTIFICATE REQUEST');
+    const fullchainPem = certPem + ca.certPem;
+
+    const warnings = [];
+    if (ca.notAfter.getTime() < Date.now()) {
+      warnings.push('The CA has expired: the certificate will not be considered valid.');
+    } else if (ca.notAfter.getTime() < notAfter.getTime()) {
+      warnings.push('The certificate expires after the CA: after ' + ca.notAfter.toISOString().slice(0, 10) + ' the chain will not be valid.');
+    }
+    if (!domains.some((d) => d.value.toLowerCase() === cn.toLowerCase())) {
+      warnings.push('CN is not among the SANs: modern clients use SANs only.');
+    }
+    for (const d of domains) {
+      if (d.type === 'dns' && d.wildcard && d.value.slice(2).split('.').length < 2) {
+        warnings.push('Very broad wildcard (' + d.value + '): public CAs normally reject it.');
+      }
+    }
+    for (const w of warnings) emit('warn', w);
+
+    const files = [
+      { id: 'cert', label: 'Certificate', name: baseName + '.crt', mime: 'application/x-x509-ca-cert', content: certPem },
+      { id: 'key', label: 'Private key', name: baseName + '.key', mime: 'application/x-pem-file', content: keyPemOut },
+      { id: 'csr', label: 'CSR', name: baseName + '.csr', mime: 'application/pkcs10', content: csrPem },
+      { id: 'chain', label: 'Full chain', name: baseName + '.fullchain.pem', mime: 'application/x-pem-file', content: fullchainPem }
+    ];
+
+    const zipFiles = [
+      { name: baseName + '.crt', content: certPem },
+      { name: baseName + '.key', content: keyPemOut },
+      { name: baseName + '.csr', content: csrPem },
+      { name: baseName + '.fullchain.pem', content: fullchainPem },
+      { name: 'cert.pem', content: ca.certPem }
+    ];
+
+    emit('ok', 'Completed: ' + baseName + ' · ' + site.key.label + ' · ' + days + ' days.');
+
+    return {
+      baseName,
+      files,
+      zipFiles,
+      zipName: baseName + '-certificates.zip',
+      warnings,
+      info: {
+        subjectString: formatName(subjectAttrs),
+        subject: subjectAttrs,
+        issuer: ca.subjectString,
+        issuerString: ca.subjectString,
+        sans: domains.map((d) => ({ type: d.type, version: d.version, value: d.value, wildcard: !!d.wildcard })),
+        keyLabel: site.key.label,
+        sigLabel: sigAlgLabel(ca.key),
+        caKeyLabel: keyLabel(ca.key),
+        serialHex: hex(serial),
+        notBefore,
+        notAfter,
+        caNotAfter: ca.notAfter,
+        days,
+        clientAuth,
+        verified: certVerified && csrVerified,
+        keyFormat: keyOut.label,
+        caPem: ca.certPem,
+        caSubject: ca.subjectString
+      }
+    };
+  }
+
+  globalThis.CertForge = {
+    version: '1.0.0',
+    analyzeCaCert,
+    parseDomains,
+    parseCertificate,
+    generate,
+    zipStore
+  };
+
+  if (typeof document === 'undefined') return;
+
+  /* ============================================================
+     UI
+     ============================================================ */
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const caCertEl = $('caCert');
+  const caKeyEl = $('caKey');
+  const domainsEl = $('domains');
+  const generateBtn = $('generateBtn');
+  const logEl = $('log');
+
+  let busy = false;
+  let currentResult = null;
+  let currentFile = null;
+  let caTimer = null;
+
+  function setBusy(value) {
+    busy = value;
+    generateBtn.disabled = value;
+    generateBtn.classList.toggle('loading', value);
+    const label = generateBtn.querySelector('.btn-label');
+    if (label) label.textContent = value ? 'GENERATING' : 'GENERATE CERTIFICATE';
+  }
+
+  function uiLog(kind, msg) {
+    const line = document.createElement('div');
+    line.className = 'log-line ' + kind;
+    const t = document.createElement('span');
+    t.className = 't';
+    t.textContent = new Date().toLocaleTimeString('en-GB', { hour12: false });
+    const p = document.createElement('span');
+    p.className = 'p';
+    p.textContent = kind === 'ok' ? '✓' : kind === 'err' ? '✗' : kind === 'warn' ? '!' : '›';
+    const m = document.createElement('span');
+    m.className = 'm';
+    m.textContent = msg;
+    line.append(t, p, m);
+    logEl.append(line);
+    while (logEl.children.length > 20) logEl.firstElementChild.remove();
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearLog() { logEl.replaceChildren(); }
+
+  function toast(msg, kind) {
+    const box = $('toasts');
+    const el = document.createElement('div');
+    el.className = 'toast' + (kind ? ' ' + kind : '');
+    el.textContent = msg;
+    box.append(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 300);
+    }, 2800);
+  }
+
+  function showAlert(msg) {
+    const el = $('alert');
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
+  function hideAlert() { $('alert').hidden = true; }
+
+  function fmtDate(d) {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  function fmtDateTime(d) {
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function setBadge(el, cls, text, title) {
+    el.className = 'badge ' + cls;
+    el.replaceChildren();
+    const dot = document.createElement('i');
+    dot.className = 'dot';
+    el.append(dot, document.createTextNode(text));
+    if (title) el.title = title; else el.removeAttribute('title');
+  }
+
+  function refreshCaBadge() {
+    clearTimeout(caTimer);
+    caTimer = setTimeout(() => {
+      const badge = $('caBadge');
+      try {
+        const ca = CertForge.analyzeCaCert(caCertEl.value);
+        const expired = ca.notAfter.getTime() < Date.now();
+        const noCertSign = ca.isCA && !ca.keyCertSign;
+        const text = (ca.subject.CN || ca.subjectString || 'CA') + ' · ' + keyLabel(ca.key) + ' · ' +
+          (noCertSign ? 'missing keyCertSign' : (expired ? 'expired' : 'valid until ' + fmtDate(ca.notAfter)));
+        const cls = (!ca.isCA || noCertSign) ? 'err' : (expired ? 'warn' : 'ok');
+        setBadge(badge, cls, text, ca.subjectString + (!ca.isCA ? ' · not a CA' : (noCertSign ? ' · keyUsage does not allow keyCertSign' : '')));
+      } catch (e) {
+        setBadge(badge, 'err', 'Invalid CA', e.message);
+      }
+    }, 180);
+  }
+
+  function updateCnPlaceholder() {
+    try {
+      const list = CertForge.parseDomains(domainsEl.value);
+      $('cn').placeholder = 'auto: ' + list[0].value;
+    } catch (_) {
+      $('cn').placeholder = 'auto from first domain';
+    }
+  }
+
+  function refreshSan() {
+    const box = $('sanPreview');
+    box.replaceChildren();
+    if (!domainsEl.value.trim()) {
+      const s = document.createElement('span');
+      s.className = 'san-empty';
+      s.textContent = 'No domains entered.';
+      box.append(s);
+      updateCnPlaceholder();
+      return;
+    }
+    try {
+      const list = CertForge.parseDomains(domainsEl.value);
+      for (const d of list) {
+        const chip = document.createElement('span');
+        chip.className = 'chip ' + (d.type === 'ip' ? 'ip' : 'dns');
+        const tag = document.createElement('b');
+        tag.textContent = d.type === 'ip' ? 'IP' + d.version : (d.wildcard ? 'WILD' : 'DNS');
+        chip.append(tag, document.createTextNode(d.value));
+        box.append(chip);
+      }
+    } catch (e) {
+      const err = document.createElement('span');
+      err.className = 'san-error';
+      err.textContent = e.message;
+      box.append(err);
+    }
+    updateCnPlaceholder();
+  }
+
+  function updateKeyHint() {
+    const hints = {
+      rsa2048: 'RSA 2048 · maximum compatibility',
+      rsa3072: 'RSA 3072 · stronger, slower handshake',
+      rsa4096: 'RSA 4096 · maximum strength, slower',
+      ec256: 'ECDSA P-256 · compact and fast',
+      ec384: 'ECDSA P-384 · strong, ideal with a P-384 CA'
+    };
+    $('keyHint').textContent = hints[$('keyType').value] || '';
+  }
+
+  function addKV(parent, key, value, wide) {
+    const card = document.createElement('div');
+    card.className = 'kv' + (wide ? ' wide' : '');
+    const k = document.createElement('div');
+    k.className = 'k';
+    k.textContent = key;
+    const v = document.createElement('div');
+    v.className = 'v';
+    v.textContent = value || '—';
+    card.append(k, v);
+    parent.append(card);
+  }
+
+  function buildCommands(res) {
+    const base = res.baseName;
+    const info = res.info;
+    const sanList = info.sans.map((s) => (s.type === 'ip' ? 'IP:' + s.value : 'DNS:' + s.value)).join(',');
+    const keyUsage = info.keyLabel.startsWith('RSA') ? 'digitalSignature,keyEncipherment' : 'digitalSignature';
+    const eku = 'serverAuth' + (info.clientAuth ? ',clientAuth' : '');
+    const sha = info.sigLabel.includes('SHA-384') ? 'sha384' : (info.sigLabel.includes('SHA-512') ? 'sha512' : 'sha256');
+
+    return `# 1) Verify the chain.
+# The provided CA is an intermediate: -partial_chain treats it as a trust anchor.
+openssl verify -partial_chain -CAfile cert.pem ${base}.crt
+
+# 2) Inspect certificate and CSR
+openssl x509 -in ${base}.crt -noout -text
+openssl req -in ${base}.csr -noout -text -verify
+
+# 3) Local TLS test
+openssl s_server -accept 4433 -cert ${base}.crt -key ${base}.key -www
+
+# ------------------------------------------------------------------
+# Full OpenSSL equivalent, with X.509 v3 extensions.
+# Without -extfile, "openssl x509 -req" generates a v1 certificate
+# without SAN: modern browsers reject it.
+# ------------------------------------------------------------------
+cat > ext.cnf <<'EOF'
+subjectAltName=${sanList}
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,${keyUsage}
+extendedKeyUsage=${eku}
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+EOF
+
+openssl x509 -req -in ${base}.csr -CA cert.pem -CAkey private.pem \\
+  -CAcreateserial -out ${base}.crt -days ${info.days} -${sha} -extfile ext.cnf`;
+  }
+
+  function renderTabs(res) {
+    const tabs = $('tabs');
+    tabs.replaceChildren();
+    for (const file of res.files) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab';
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', file.id === res.files[0].id ? 'true' : 'false');
+      btn.dataset.id = file.id;
+      btn.textContent = file.label;
+      btn.addEventListener('click', () => selectFile(file.id));
+      tabs.append(btn);
+    }
+    selectFile(res.files[0].id);
+  }
+
+  function selectFile(id) {
+    if (!currentResult) return;
+    const file = currentResult.files.find((f) => f.id === id) || currentResult.files[0];
+    currentFile = file;
+    $('fileName').textContent = file.name;
+    $('codePane').textContent = file.content;
+    for (const tab of $('tabs').querySelectorAll('.tab')) {
+      tab.setAttribute('aria-selected', tab.dataset.id === file.id ? 'true' : 'false');
+    }
+  }
+
+  function renderResult(res) {
+    currentResult = res;
+    $('emptyState').hidden = true;
+    $('result').hidden = false;
+    $('outPills').hidden = false;
+
+    const verify = $('verifyPill');
+    verify.className = 'pill ' + (res.info.verified ? 'ok' : 'err');
+    verify.textContent = res.info.verified ? 'signature verified' : 'verification failed';
+    verify.title = 'Certificate signature verified in the browser with the CA public key.';
+
+    const trust = $('trustPill');
+    trust.className = 'pill warn';
+    trust.textContent = 'CA not preinstalled';
+    trust.title = 'The certificate is cryptographically valid, but the browser only trusts CAs in its trust store.';
+
+    const summary = $('summary');
+    summary.replaceChildren();
+    addKV(summary, 'Subject', res.info.subjectString);
+    addKV(summary, 'Issuer', res.info.issuer);
+    addKV(summary, 'SAN', res.info.sans.map((s) => s.value).join(', '), true);
+    addKV(summary, 'Site key', res.info.keyLabel);
+    addKV(summary, 'Signature', res.info.sigLabel);
+    addKV(summary, 'Validity', fmtDate(res.info.notBefore) + ' → ' + fmtDate(res.info.notAfter));
+    const serial = (res.info.serialHex.toUpperCase().match(/.{2}/g) || []).join(':');
+    addKV(summary, 'Serial', serial);
+    const keyFormat = res.info.keyFormat === 'PRIVATE KEY' ? 'PKCS#8'
+      : res.info.keyFormat === 'RSA PRIVATE KEY' ? 'PKCS#1'
+      : res.info.keyFormat === 'EC PRIVATE KEY' ? 'SEC1'
+      : res.info.keyFormat;
+    addKV(summary, 'Key format', keyFormat);
+
+    const warnBox = $('warnBox');
+    warnBox.replaceChildren();
+    if (res.warnings.length) {
+      const head = document.createElement('div');
+      head.className = 'wh';
+      head.textContent = 'WARNING';
+      const ul = document.createElement('ul');
+      for (const w of res.warnings) {
+        const li = document.createElement('li');
+        li.textContent = w;
+        ul.append(li);
+      }
+      warnBox.append(head, ul);
+      warnBox.hidden = false;
+    } else {
+      warnBox.hidden = true;
+    }
+
+    renderTabs(res);
+    $('commandsPre').textContent = buildCommands(res);
+
+    const resultEl = $('result');
+    if (window.matchMedia && window.matchMedia('(max-width: 1040px)').matches && typeof resultEl.scrollIntoView === 'function') {
+      resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  async function onGenerate() {
+    if (busy) return;
+    setBusy(true);
+    hideAlert();
+    currentResult = null;
+    currentFile = null;
+    $('result').hidden = true;
+    $('outPills').hidden = true;
+    $('emptyState').hidden = false;
+    $('emptyState').classList.add('busy');
+    clearLog();
+    uiLog('info', 'Starting offline generation…');
+    try {
+      const res = await CertForge.generate({
+        caCertPem: caCertEl.value,
+        caKeyPem: caKeyEl.value,
+        domains: domainsEl.value,
+        keyType: $('keyType').value,
+        days: Number($('days').value),
+        baseName: $('baseName').value.trim(),
+        classicKey: $('classicKey').checked,
+        clientAuth: $('clientAuth').checked,
+        subject: {
+          CN: $('cn').value.trim(),
+          O: $('org').value.trim(),
+          OU: $('ou').value.trim(),
+          C: $('country').value.trim(),
+          ST: $('state').value.trim(),
+          L: $('locality').value.trim()
+        },
+        log: uiLog
+      });
+      renderResult(res);
+      $('emptyState').classList.remove('busy');
+      toast('Certificate generated.', 'ok');
+    } catch (e) {
+      $('emptyState').classList.remove('busy');
+      showAlert(e.message);
+      uiLog('err', e.message);
+      toast('Generation failed.', 'err');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function download(name, content, mime) {
+    const blob = content instanceof Blob ? content : new Blob([content], { type: mime || 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  async function copyText(text, btn) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.append(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+    }
+    const old = btn.textContent;
+    btn.textContent = 'copied ✓';
+    setTimeout(() => { btn.textContent = old; }, 1300);
+  }
+
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+      c ^= bytes[i];
+      for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  function zipStore(files) {
+    const chunks = [];
+    const central = [];
+    let offset = 0;
+    const now = new Date();
+    const dosTime = ((now.getHours() & 31) << 11) | ((now.getMinutes() & 63) << 5) | ((Math.floor(now.getSeconds() / 2)) & 31);
+    const dosDate = (((now.getFullYear() - 1980) & 127) << 9) | (((now.getMonth() + 1) & 15) << 5) | (now.getDate() & 31);
+
+    for (const file of files) {
+      const name = TE.encode(file.name);
+      const data = TE.encode(file.content);
+      const crc = crc32(data);
+
+      const local = new Uint8Array(30 + name.length);
+      const lv = new DataView(local.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true);
+      lv.setUint16(8, 0, true);
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, name.length, true);
+      lv.setUint16(28, 0, true);
+      local.set(name, 30);
+      chunks.push(local, data);
+
+      const cen = new Uint8Array(46 + name.length);
+      const cv = new DataView(cen.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      cen.set(name, 46);
+      central.push(cen);
+
+      offset += local.length + data.length;
+    }
+
+    const centralSize = central.reduce((a, b) => a + b.length, 0);
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+
+    return new Blob([...chunks, ...central, end], { type: 'application/zip' });
+  }
+
+  /* ============================================================
+     Matrix rain
+     ============================================================ */
+  let matrixCanvas = null;
+  let matrixCtx = null;
+  let matrixRunning = false;
+  let matrixRaf = null;
+  let matrixDrops = [];
+  let matrixLast = 0;
+  let matrixColor = '#3dffa2';
+  const matrixChars = '0123456789ABCDEF<>/\\[]{}#$%&*+=;:';
+  const matrixFontSize = 14;
+
+  function resizeMatrix() {
+    if (!matrixCanvas || !matrixCtx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    matrixCanvas.width = Math.floor(w * dpr);
+    matrixCanvas.height = Math.floor(h * dpr);
+    matrixCanvas.style.width = w + 'px';
+    matrixCanvas.style.height = h + 'px';
+    matrixCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    matrixCtx.clearRect(0, 0, w, h);
+    const cols = Math.ceil(w / matrixFontSize);
+    matrixDrops = new Array(cols).fill(0).map(() => Math.random() * -h / matrixFontSize);
+  }
+
+  function matrixFrame(t) {
+    if (!matrixRunning) return;
+    matrixRaf = requestAnimationFrame(matrixFrame);
+    if (document.body.dataset.mode !== 'hacker') return;
+    if (t - matrixLast < 55) return;
+    matrixLast = t;
+
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    matrixCtx.globalCompositeOperation = 'destination-out';
+    matrixCtx.fillStyle = 'rgba(0,0,0,0.09)';
+    matrixCtx.fillRect(0, 0, w, h);
+    matrixCtx.globalCompositeOperation = 'source-over';
+    matrixCtx.font = matrixFontSize + 'px "Cascadia Code", monospace';
+    matrixCtx.fillStyle = matrixColor;
+
+    for (let i = 0; i < matrixDrops.length; i++) {
+      const ch = matrixChars[(Math.random() * matrixChars.length) | 0];
+      const x = i * matrixFontSize;
+      const y = matrixDrops[i] * matrixFontSize;
+      matrixCtx.fillText(ch, x, y);
+      if (y > h && Math.random() > 0.975) matrixDrops[i] = 0;
+      matrixDrops[i] += 1;
+    }
+  }
+
+  function startMatrix() {
+    if (reduceMotion || !matrixCanvas || !matrixCtx || matrixRunning) return;
+    matrixColor = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#3dffa2';
+    matrixRunning = true;
+    matrixLast = 0;
+    resizeMatrix();
+    matrixRaf = requestAnimationFrame(matrixFrame);
+  }
+
+  function stopMatrix() {
+    matrixRunning = false;
+    if (matrixRaf) cancelAnimationFrame(matrixRaf);
+    matrixRaf = null;
+    if (matrixCtx) matrixCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  }
+
+  function initMatrix() {
+    matrixCanvas = $('matrix');
+    if (!matrixCanvas) return;
+    try { matrixCtx = matrixCanvas.getContext('2d'); } catch (_) { matrixCtx = null; }
+    if (!matrixCtx) return;
+    window.addEventListener('resize', () => { if (matrixRunning) resizeMatrix(); });
+    if (document.body.dataset.mode === 'hacker') startMatrix();
+  }
+
+  /* ============================================================
+     UI wiring
+     ============================================================ */
+  function init() {
+    caCertEl.value = DEFAULT_CA_CERT;
+    caKeyEl.value = DEFAULT_CA_KEY;
+
+    refreshCaBadge();
+    refreshSan();
+    updateKeyHint();
+
+    domainsEl.addEventListener('input', refreshSan);
+    $('keyType').addEventListener('change', updateKeyHint);
+    generateBtn.addEventListener('click', onGenerate);
+
+    $('wildcardBtn').addEventListener('click', () => {
+      try {
+        const list = CertForge.parseDomains(domainsEl.value);
+        const base = list.find((d) => d.type === 'dns' && !d.wildcard);
+        if (!base) throw new Error('No base domain to add a wildcard to.');
+        const values = list.map((d) => d.value);
+        values.push('*.' + base.value);
+        domainsEl.value = values.join(', ');
+        refreshSan();
+      } catch (e) {
+        toast(e.message, 'warn');
+      }
+    });
+
+    $('sampleBtn').addEventListener('click', () => {
+      domainsEl.value = 'example.com, *.example.com, 10.0.0.5';
+      refreshSan();
+    });
+
+    $('copyBtn').addEventListener('click', () => {
+      if (currentFile) copyText(currentFile.content, $('copyBtn'));
+    });
+
+    $('dlBtn').addEventListener('click', () => {
+      if (currentFile) download(currentFile.name, currentFile.content, currentFile.mime);
+    });
+
+    $('dlAll').addEventListener('click', () => {
+      if (!currentResult) return;
+      download(currentResult.zipName, zipStore(currentResult.zipFiles));
+    });
+
+    $('regen').addEventListener('click', onGenerate);
+
+    const hackerToggle = $('hackerToggle');
+    hackerToggle.addEventListener('change', () => {
+      document.body.dataset.mode = hackerToggle.checked ? 'hacker' : 'glass';
+      if (hackerToggle.checked) startMatrix(); else stopMatrix();
+    });
+
+    initMatrix();
+
+    if (!globalThis.crypto || !globalThis.crypto.subtle) {
+      const msg = 'WebCrypto is not available in this context. Open the page in a modern browser or serve it from localhost.';
+      showAlert(msg);
+      uiLog('err', msg);
+    } else {
+      uiLog('ok', 'System ready · WebCrypto active.');
+      uiLog('info', 'No network connections: connect-src \'none\'.');
+      uiLog('info', 'Example CA loaded · configure domains and press GENERATE.');
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
