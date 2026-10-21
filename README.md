@@ -73,7 +73,11 @@ Further reading:
   - configurable validity and subject fields (`CN`, `O`, `OU`, `C`, `ST`, `L`)
 - **PKCS#10 CSR** with SAN, basic constraints, key usage and extended key usage.
 - **Downloadable artifacts**: certificate, private key, CSR, full chain and CA
-  certificate, individually or as a ZIP archive.
+  chain, individually or as a ZIP archive.
+- **Automatic issuer chain completion** — for the embedded profiles, `cert.pem` and
+  `fullchain.pem` include the required issuer intermediate (for example,
+  `emSign Root TLS CA - G3` for the emSign TLS profiles). No manual chain assembly is
+  needed.
 - **Internal verification** — generated CSR and certificate signatures are verified in
   the browser before the result is displayed.
 - **Certificate details and OpenSSL commands** — the result panel shows the subject,
@@ -99,8 +103,8 @@ Further reading:
 `cert.pem` and `private.pem` are the reference for the default profile only. The 16
 profiles are embedded in `index.html` and are based on the public Knight1/emudhra key
 set. The page does not fetch these files at runtime. When you generate with a
-non-default profile, the ZIP contains that profile's CA as `cert.pem`; the repository
-`cert.pem` remains the default reference.
+non-default profile, the ZIP contains that profile's CA chain as `cert.pem`; the
+repository `cert.pem` remains the default reference.
 
 ---
 
@@ -134,8 +138,8 @@ non-default profile, the ZIP contains that profile's CA as `cert.pem`; the repos
 | `<name>.crt` | Leaf certificate in PEM format. |
 | `<name>.key` | Site private key (PKCS#8 by default; PKCS#1/SEC1 optional). |
 | `<name>.csr` | PKCS#10 certificate signing request. |
-| `<name>.fullchain.pem` | Leaf certificate followed by the intermediate CA. |
-| `cert.pem` | The embedded CA certificate (inside the ZIP). |
+| `<name>.fullchain.pem` | Leaf certificate followed by the complete intermediate chain. |
+| `cert.pem` | CA chain: selected CA plus its issuer intermediates (inside the ZIP). |
 | `<name>-certificates.zip` | All of the above. |
 
 The default file name is derived from the first SAN. You can override it in
@@ -227,6 +231,10 @@ compromised CA or verification is explicitly disabled for an isolated lab.
   - EC P-384 → `ecdsa-with-SHA384`
   - EC P-521 → `ecdsa-with-SHA512`
   - RSA → `sha256WithRSAEncryption`
+- **Chain completion**: for embedded profiles, the ZIP's `cert.pem` contains the
+  selected CA plus its issuer intermediate(s); `fullchain.pem` is leaf + that chain.
+  AAA profiles need no extra intermediate; emSign TLS/EV profiles add
+  `emSign Root TLS CA - G3`, and emSign CS profiles add `emSign Root CS CA - G3`.
 - **Self-checks**: CSR and certificate signatures are verified with WebCrypto before
   the result is shown. The generated certificate is also parsed again to catch encoding
   errors.
@@ -277,6 +285,9 @@ compromised CA or verification is explicitly disabled for an isolated lab.
   [Reference gist](https://gist.github.com/Fluepke/9a103c7f990c3cc2fb5002f7476f2f48).
 - **Knight1** — multi-CA Go PoC and key set used for the embedded profiles:
   [Knight1/emudhra](https://github.com/Knight1/emudhra).
+- **galadran/we-have-a-problem.com** — public test chains and issuer/root data used to
+  complete the embedded CA chains:
+  [galadran/we-have-a-problem.com](https://github.com/galadran/we-have-a-problem.com).
 - Built with browser WebCrypto and a hand-written ASN.1 DER encoder/parser. No
   third-party JavaScript libraries are used.
 
