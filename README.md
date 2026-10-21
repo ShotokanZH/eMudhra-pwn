@@ -14,6 +14,13 @@ demonstration of the October 2026 eMudhra certificate compromise.
 
 ---
 
+## Links
+
+- **Live version:** <https://emudpwn.eleet.dev/>
+- **Source code:** <https://github.com/ShotokanZH/eMudhra-pwn>
+
+---
+
 ## Background
 
 On 19 October 2026, Cloudflare became aware that the private keys for eight eMudhra
@@ -72,9 +79,9 @@ Further reading:
   verification commands.
 - **UI modes** — glassmorphism/hacker theme with matrix rain, responsive layout, and
   reduced-motion support.
-- **SEO and social metadata** — meta description, robots, Open Graph, Twitter card and
-  `SoftwareApplication` JSON-LD. Add a public URL and an absolute `og:image` for rich
-  social previews.
+- **SEO and social metadata** — meta description, robots, canonical URL, Open Graph
+  (`og:url` points to the live version), Twitter card and `SoftwareApplication` JSON-LD.
+  Add an absolute `og:image` and `twitter:image` for rich social previews.
 
 ---
 
@@ -83,14 +90,19 @@ Further reading:
 | File | Purpose |
 | --- | --- |
 | `index.html` | The complete standalone application. |
-| `note.txt` | The original CA certificate and private key used as the embedded source. |
+| `cert.pem` | CA certificate; reference copy of the CA embedded in `index.html`. |
+| `private.pem` | CA private key; reference copy of the compromised key embedded in `index.html`. |
 | `README.md` | This document. |
+
+`cert.pem` and `private.pem` are reference copies of the CA material hardcoded in
+`index.html`; the page does not fetch them at runtime.
 
 ---
 
 ## Quick start
 
-1. Open `index.html` in a modern browser (Chrome, Firefox, Edge, Safari).
+1. Open the hosted version at <https://emudpwn.eleet.dev/>, or open `index.html` in a
+   modern browser (Chrome, Firefox, Edge, Safari).
    - WebCrypto is available from `file://` in most modern browsers.
    - If your browser blocks WebCrypto on `file://`, serve the folder locally:
      ```bash
@@ -242,8 +254,8 @@ compromised CA or verification is explicitly disabled for an isolated lab.
   protection that the eMudhra incident response is trying to restore.
 - Use the tool only in isolated labs, CTFs, or environments where you have explicit
   written authorization.
-- The page does not make network requests while generating certificates. The Cloudflare
-  and Ko-fi links are external navigations and open only when clicked.
+- The page does not make network requests while generating certificates. The GitHub,
+  Cloudflare and Ko-fi links are external navigations and open only when clicked.
 - No generated private key or CA key is transmitted or stored by the page.
 
 ---
@@ -251,9 +263,13 @@ compromised CA or verification is explicitly disabled for an isolated lab.
 ## Credits
 
 - **ShotokanZH** — author.
+- **GitHub** — source repository:
+  [ShotokanZH/eMudhra-pwn](https://github.com/ShotokanZH/eMudhra-pwn).
 - **Cloudflare** — incident analysis:
   [8 eMudhra certificates are compromised](https://blog.cloudflare.com/emudhra-certificate-compromise/).
 - **eMudhra** — the compromised intermediate CA and certificate data.
+- **Fluepke** — reference gist for the compromised CA certificate and key material:
+  [Reference gist](https://gist.github.com/Fluepke/9a103c7f990c3cc2fb5002f7476f2f48).
 - Built with browser WebCrypto and a hand-written ASN.1 DER encoder/parser. No
   third-party JavaScript libraries are used.
 
