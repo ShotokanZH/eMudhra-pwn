@@ -6,6 +6,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; font-src 'none'; object-src 'none'; media-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2304070a'/%3E%3Cpath d='M9 16l5 5 9-11' stroke='%233dffa2' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <title>eMudhraPwn by ShotokanZH</title>
+<link rel="canonical" href="https://emudpwn.eleet.dev/">
 <meta name="description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certs with SAN, wildcards and IPv4/IPv6 locally.">
 <meta name="author" content="ShotokanZH">
 <meta name="robots" content="index, follow">
@@ -17,10 +18,11 @@
 <meta property="og:title" content="eMudhraPwn by ShotokanZH">
 <meta property="og:description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certificates with SAN, wildcards and IPv4/IPv6 locally.">
 <meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://emudpwn.eleet.dev/">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="eMudhraPwn by ShotokanZH">
 <meta name="twitter:description" content="Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. SAN, wildcards, IPv4/IPv6 — all local.">
-<!-- For rich social previews, add absolute og:url, og:image and twitter:image, plus a canonical link, once the page has a public URL. -->
+<!-- For rich social previews, add an absolute og:image and twitter:image once a social card is available. -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -32,6 +34,8 @@
   "softwareVersion": "1.0.0",
   "isAccessibleForFree": true,
   "inLanguage": "en",
+  "url": "https://emudpwn.eleet.dev/",
+  "sameAs": ["https://github.com/ShotokanZH/eMudhra-pwn"],
   "description": "Offline X.509 certificate generator built on a compromised eMudhra intermediate CA. Create TLS certificates with SAN, wildcards and IPv4/IPv6 locally.",
   "author": { "@type": "Person", "name": "ShotokanZH" },
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
@@ -146,6 +150,18 @@
     font: 700 10px var(--mono); letter-spacing: 0.14em;
   }
   .net-pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: blink 2s infinite; }
+  .gh-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: 6px 11px; color: var(--muted); text-decoration: none;
+    font: 600 10px var(--mono); letter-spacing: 0.04em;
+    transition: color .15s, border-color .15s, background .15s, box-shadow .15s;
+  }
+  .gh-link:hover {
+    color: var(--accent); border-color: var(--accent);
+    background: var(--accent-dim); box-shadow: 0 0 18px var(--accent-dim);
+  }
+  .gh-link .gh-mark { color: var(--accent); font-size: 10px; }
   .mode-switch { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font: 700 10px var(--mono); letter-spacing: 0.12em; user-select: none; cursor: pointer; }
   .mode-switch input { position: absolute; opacity: 0; pointer-events: none; }
   .track { width: 38px; height: 20px; border-radius: 999px; border: 1px solid var(--line-strong); background: rgba(0,0,0,0.4); position: relative; transition: background .2s, border-color .2s; }
@@ -494,6 +510,9 @@
     </div>
     <div class="top-actions">
       <span class="net-pill" title="This page makes no network requests"><span class="dot"></span> OFFLINE</span>
+      <a class="gh-link" href="https://github.com/ShotokanZH/eMudhra-pwn" target="_blank" rel="noopener noreferrer" title="View source on GitHub" aria-label="View source on GitHub">
+        <span class="gh-mark" aria-hidden="true">&lt;/&gt;</span> GitHub ↗
+      </a>
       <label class="mode-switch" title="Toggle hacker / glass theme">
         <input type="checkbox" id="hackerToggle" checked>
         <span class="track"><span class="knob"></span></span>
@@ -696,7 +715,7 @@
         <span class="cup" aria-hidden="true">☕</span> buy me a coffee?
       </a>
     </p>
-    <p>The CA private key never leaves the browser. No network requests are made by the page itself: CSP <code>connect-src 'none'</code>. External links (Cloudflare, Ko-fi) open only when clicked.</p>
+    <p>The CA private key never leaves the browser. No network requests are made by the page itself: CSP <code>connect-src 'none'</code>. External links (GitHub, Cloudflare, Ko-fi) open only when clicked.</p>
     <p class="dim">The certificate is cryptographically valid, but browsers only trust CAs in their trust store. Use this tool only with CAs you are authorized to use.</p>
   </footer>
 </div>
